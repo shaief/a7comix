@@ -42,7 +42,6 @@
           <canvas
             ref="previewCanvas"
             class="source-preview-canvas"
-            :style="{ transform: `rotate(${rotation}deg)` }"
           ></canvas>
         </div>
 
@@ -281,11 +280,19 @@ const reset = () => {
 // Rotation control
 const setRotation = (degrees) => {
   rotation.value = degrees
+  // Redraw preview to update grid overlay
+  if (sourceCanvas.value) {
+    drawPreview(sourceCanvas.value)
+  }
 }
 
 // Ordering mode control
 const setOrderingMode = (mode) => {
   orderingMode.value = mode
+  // Redraw preview to update grid overlay numbers
+  if (sourceCanvas.value) {
+    drawPreview(sourceCanvas.value)
+  }
 }
 
 // Page position control
@@ -314,8 +321,10 @@ const setPagePosition = (pageNum) => {
       sourceCanvas.value = canvas
       drawPreview(canvas)
     })
+  } else if (sourceCanvas.value) {
+    // For single page images/PDFs, redraw preview to update numbers
+    drawPreview(sourceCanvas.value)
   }
-  // For single page images/PDFs, this just marks the position (1st or 2nd page)
 }
 
 // Load preview
@@ -457,10 +466,14 @@ const drawPreview = (canvas) => {
       return
     }
 
+    // Apply rotation to the canvas before displaying
+    const currentRotation = rotation.value
+    const rotatedCanvas = applyRotation(canvas, currentRotation)
+
     const maxWidth = 600
     const maxHeight = 800
-    let width = canvas.width
-    let height = canvas.height
+    let width = rotatedCanvas.width
+    let height = rotatedCanvas.height
 
     // Scale down if needed
     const scale = Math.min(maxWidth / width, maxHeight / height, 1)
@@ -471,9 +484,82 @@ const drawPreview = (canvas) => {
     previewCanvasEl.height = height
 
     const ctx = previewCanvasEl.getContext('2d')
-    ctx.drawImage(canvas, 0, 0, width, height)
+    ctx.drawImage(rotatedCanvas, 0, 0, width, height)
+
+    // Draw grid lines and numbers overlay
+    // Use the rotated canvas dimensions for the overlay
+    drawGridOverlay(ctx, width, height, rotatedCanvas.width, rotatedCanvas.height)
+
     console.log('drawPreview: done')
   })
+}
+
+const drawGridOverlay = (ctx, displayWidth, displayHeight, originalWidth, originalHeight) => {
+  // The canvas is already rotated, so determine grid based on current dimensions
+  const isPortrait = originalHeight > originalWidth
+
+  // Get current values
+  const currentOrderingMode = orderingMode.value
+  const isFirstPage = selectedPage.value === 1
+
+  // Calculate grid based on current orientation (after rotation)
+  let cols, rows
+  if (isPortrait) {
+    cols = 2
+    rows = 4
+  } else {
+    cols = 4
+    rows = 2
+  }
+
+  const cellWidth = displayWidth / cols
+  const cellHeight = displayHeight / rows
+
+  // Draw grid lines
+  ctx.strokeStyle = 'rgba(102, 126, 234, 0.8)'
+  ctx.lineWidth = 2
+
+  // Vertical lines
+  for (let col = 1; col < cols; col++) {
+    ctx.beginPath()
+    ctx.moveTo(col * cellWidth, 0)
+    ctx.lineTo(col * cellWidth, displayHeight)
+    ctx.stroke()
+  }
+
+  // Horizontal lines
+  for (let row = 1; row < rows; row++) {
+    ctx.beginPath()
+    ctx.moveTo(0, row * cellHeight)
+    ctx.lineTo(displayWidth, row * cellHeight)
+    ctx.stroke()
+  }
+
+  // Draw numbers in each cell
+  ctx.font = 'bold 32px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const position = row * cols + col
+      // Use isPortrait since canvas is already rotated
+      const pageNumber = getPageNumber(position, isPortrait, isFirstPage, currentOrderingMode)
+
+      const x = col * cellWidth + cellWidth / 2
+      const y = row * cellHeight + cellHeight / 2
+
+      // Draw background circle
+      ctx.fillStyle = 'rgba(102, 126, 234, 0.9)'
+      ctx.beginPath()
+      ctx.arc(x, y, 28, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Draw number
+      ctx.fillStyle = 'white'
+      ctx.fillText(pageNumber.toString(), x, y)
+    }
+  }
 }
 
 // Apply rotation to canvas
