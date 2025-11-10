@@ -45,102 +45,111 @@
           ></canvas>
         </div>
 
-        <!-- Page Position Selector (always shown) -->
-        <div class="page-selection">
-          <h4>This source image represents:</h4>
-          <div class="page-selection-buttons">
-            <button
-              class="btn-page-select"
-              :class="{ active: selectedPage === 1 }"
-              @click="setPagePosition(1)"
-              :disabled="processing"
-            >
-              First Page
-            </button>
-            <button
-              class="btn-page-select"
-              :class="{ active: selectedPage === 2 }"
-              @click="setPagePosition(2)"
-              :disabled="processing"
-            >
-              Second Page
-            </button>
+        <!-- Modern Settings Controls -->
+        <div class="settings-panel">
+          <!-- Page Position Switch -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">📄</span>
+              <span class="setting-title">Page Position</span>
+            </div>
+            <div class="switch-container">
+              <span class="switch-label" :class="{ active: selectedPage === 1 }">First Page</span>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  :checked="selectedPage === 2"
+                  @change="setPagePosition(selectedPage === 1 ? 2 : 1)"
+                  :disabled="processing"
+                >
+                <span class="slider"></span>
+              </label>
+              <span class="switch-label" :class="{ active: selectedPage === 2 }">Second Page</span>
+            </div>
           </div>
-          <p class="page-hint">Choose whether this is the first or second page of your document</p>
-        </div>
 
-        <!-- Ordering Mode Controls -->
-        <div class="ordering-controls">
-          <h4>Page Numbering Order:</h4>
-          <div class="ordering-buttons">
-            <button
-              class="btn-ordering"
-              :class="{ active: orderingMode === 'standard' }"
-              @click="setOrderingMode('standard')"
-              :disabled="processing"
-            >
-              Standard
-            </button>
-            <button
-              class="btn-ordering"
-              :class="{ active: orderingMode === 'rtl' }"
-              @click="setOrderingMode('rtl')"
-              :disabled="processing"
-            >
-              RTL Comix Booklet
-            </button>
-            <button
-              class="btn-ordering"
-              :class="{ active: orderingMode === 'ltr' }"
-              @click="setOrderingMode('ltr')"
-              :disabled="processing"
-            >
-              LTR Comix Booklet
-            </button>
+          <!-- Rotation Controls -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">🔄</span>
+              <span class="setting-title">Rotation</span>
+            </div>
+            <div class="rotation-grid">
+              <button
+                class="rotation-btn"
+                :class="{ active: rotation === 0 }"
+                @click="setRotation(0)"
+                :disabled="processing"
+                title="No rotation"
+              >
+                <span class="rotation-icon">↑</span>
+                <span class="rotation-degree">0°</span>
+              </button>
+              <button
+                class="rotation-btn"
+                :class="{ active: rotation === 90 }"
+                @click="setRotation(90)"
+                :disabled="processing"
+                title="Rotate 90° clockwise"
+              >
+                <span class="rotation-icon">→</span>
+                <span class="rotation-degree">90°</span>
+              </button>
+              <button
+                class="rotation-btn"
+                :class="{ active: rotation === 180 }"
+                @click="setRotation(180)"
+                :disabled="processing"
+                title="Rotate 180°"
+              >
+                <span class="rotation-icon">↓</span>
+                <span class="rotation-degree">180°</span>
+              </button>
+              <button
+                class="rotation-btn"
+                :class="{ active: rotation === 270 }"
+                @click="setRotation(270)"
+                :disabled="processing"
+                title="Rotate 270° clockwise"
+              >
+                <span class="rotation-icon">←</span>
+                <span class="rotation-degree">270°</span>
+              </button>
+            </div>
           </div>
-          <p class="ordering-hint">
-            Standard: Sequential 1-8/9-16 |
-            RTL: Right-to-left booklet layout |
-            LTR: Left-to-right booklet layout
-          </p>
-        </div>
 
-        <!-- Rotation Controls -->
-        <div class="rotation-controls">
-          <h4>Rotate Document:</h4>
-          <div class="rotation-buttons">
-            <button
-              class="btn-rotation"
-              :class="{ active: rotation === 0 }"
-              @click="setRotation(0)"
-              :disabled="processing"
-            >
-              0°
-            </button>
-            <button
-              class="btn-rotation"
-              :class="{ active: rotation === 90 }"
-              @click="setRotation(90)"
-              :disabled="processing"
-            >
-              90°
-            </button>
-            <button
-              class="btn-rotation"
-              :class="{ active: rotation === 180 }"
-              @click="setRotation(180)"
-              :disabled="processing"
-            >
-              180°
-            </button>
-            <button
-              class="btn-rotation"
-              :class="{ active: rotation === 270 }"
-              @click="setRotation(270)"
-              :disabled="processing"
-            >
-              270°
-            </button>
+          <!-- Numbering Mode Controls -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">🔢</span>
+              <span class="setting-title">Numbering Order</span>
+            </div>
+            <div class="chip-group">
+              <button
+                class="chip"
+                :class="{ active: orderingMode === 'standard' }"
+                @click="setOrderingMode('standard')"
+                :disabled="processing"
+              >
+                Standard
+              </button>
+              <button
+                class="chip"
+                :class="{ active: orderingMode === 'rtl' }"
+                @click="setOrderingMode('rtl')"
+                :disabled="processing"
+              >
+                RTL Booklet
+              </button>
+              <button
+                class="chip"
+                :class="{ active: orderingMode === 'ltr' }"
+                @click="setOrderingMode('ltr')"
+                :disabled="processing"
+              >
+                LTR Booklet
+              </button>
+            </div>
           </div>
         </div>
       </div>
