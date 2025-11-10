@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [vue()],
-  base: '/a7comix/',
+  base: mode === 'production' ? '/a7comix/' : '/',
   optimizeDeps: {
     include: ['pdfjs-dist']
   },
@@ -12,4 +12,4 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false
   }
-})
+}))

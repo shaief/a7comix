@@ -25,16 +25,67 @@
       >
     </div>
 
-    <!-- File Info & Actions -->
-    <div v-if="selectedFile" class="file-info">
+    <!-- File Info & Preview -->
+    <div v-if="selectedFile && !processedImages.length" class="file-info">
       <h3>Selected File:</h3>
       <div class="file-name">{{ selectedFile.name }}</div>
+
+      <!-- Source Preview -->
+      <div v-if="previewUrl" class="source-preview-section">
+        <h3>Preview:</h3>
+        <div class="preview-container">
+          <canvas
+            ref="previewCanvas"
+            class="source-preview-canvas"
+            :style="{ transform: `rotate(${rotation}deg)` }"
+          ></canvas>
+        </div>
+
+        <!-- Rotation Controls -->
+        <div class="rotation-controls">
+          <h4>Rotate Document:</h4>
+          <div class="rotation-buttons">
+            <button
+              class="btn-rotation"
+              :class="{ active: rotation === 0 }"
+              @click="setRotation(0)"
+              :disabled="processing"
+            >
+              0°
+            </button>
+            <button
+              class="btn-rotation"
+              :class="{ active: rotation === 90 }"
+              @click="setRotation(90)"
+              :disabled="processing"
+            >
+              90°
+            </button>
+            <button
+              class="btn-rotation"
+              :class="{ active: rotation === 180 }"
+              @click="setRotation(180)"
+              :disabled="processing"
+            >
+              180°
+            </button>
+            <button
+              class="btn-rotation"
+              :class="{ active: rotation === 270 }"
+              @click="setRotation(270)"
+              :disabled="processing"
+            >
+              270°
+            </button>
+          </div>
+        </div>
+      </div>
 
       <div class="button-group">
         <button
           class="btn btn-primary"
           @click="processDocument"
-          :disabled="processing"
+          :disabled="processing || !previewUrl"
         >
           {{ processing ? 'Processing...' : 'Split into A7 Images' }}
         </button>
@@ -76,18 +127,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
 
 // State
 const selectedFile = ref(null)
 const fileInput = ref(null)
+const previewCanvas = ref(null)
 const isDragging = ref(false)
 const processing = ref(false)
 const progress = ref(0)
 const processedImages = ref([])
 const statusMessage = ref('')
 const statusType = ref('info')
+const previewUrl = ref('')
+const rotation = ref(0)
+const sourceCanvas = ref(null)
 
 // Initialize PDF.js worker
 onMounted(() => {
@@ -106,6 +161,8 @@ const handleFileSelect = (event) => {
     selectedFile.value = file
     processedImages.value = []
     statusMessage.value = ''
+    rotation.value = 0
+    loadPreview(file)
   }
 }
 
@@ -116,6 +173,8 @@ const handleDrop = (event) => {
     selectedFile.value = file
     processedImages.value = []
     statusMessage.value = ''
+    rotation.value = 0
+    loadPreview(file)
   }
 }
 
@@ -124,14 +183,144 @@ const reset = () => {
   processedImages.value = []
   statusMessage.value = ''
   progress.value = 0
+  previewUrl.value = ''
+  rotation.value = 0
+  sourceCanvas.value = null
   if (fileInput.value) {
     fileInput.value.value = ''
   }
 }
 
+// Rotation control
+const setRotation = (degrees) => {
+  rotation.value = degrees
+}
+
+// Load preview
+const loadPreview = async (file) => {
+  try {
+    const isPdf = file.type === 'application/pdf'
+
+    if (isPdf) {
+      await loadPdfPreview(file)
+    } else {
+      await loadImagePreview(file)
+    }
+  } catch (error) {
+    console.error('Error loading preview:', error)
+    statusMessage.value = `Error loading preview: ${error.message}`
+    statusType.value = 'error'
+  }
+}
+
+const loadImagePreview = async (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+
+    reader.onload = async (e) => {
+      const img = new Image()
+      img.onload = async () => {
+        // Create source canvas
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0)
+        sourceCanvas.value = canvas
+
+        // Draw preview
+        await drawPreview(canvas)
+        resolve()
+      }
+      img.onerror = () => reject(new Error('Failed to load image'))
+      img.src = e.target.result
+    }
+
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+const loadPdfPreview = async (file) => {
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  const page = await pdf.getPage(1)
+
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+
+  // Render at high resolution
+  const viewport = page.getViewport({ scale: 2.0 })
+  canvas.width = viewport.width
+  canvas.height = viewport.height
+
+  await page.render({
+    canvasContext: context,
+    viewport: viewport
+  }).promise
+
+  sourceCanvas.value = canvas
+  await drawPreview(canvas)
+}
+
+const drawPreview = async (canvas) => {
+  // Set previewUrl first so the canvas element gets rendered
+  previewUrl.value = 'loaded'
+
+  // Wait for Vue to render the canvas element
+  await nextTick()
+
+  if (!previewCanvas.value) {
+    console.error('Preview canvas ref not available')
+    return
+  }
+
+  const maxWidth = 600
+  const maxHeight = 800
+  let width = canvas.width
+  let height = canvas.height
+
+  // Scale down if needed
+  const scale = Math.min(maxWidth / width, maxHeight / height, 1)
+  width = width * scale
+  height = height * scale
+
+  previewCanvas.value.width = width
+  previewCanvas.value.height = height
+
+  const ctx = previewCanvas.value.getContext('2d')
+  ctx.drawImage(canvas, 0, 0, width, height)
+}
+
+// Apply rotation to canvas
+const applyRotation = (sourceCanvas) => {
+  if (rotation.value === 0) {
+    return sourceCanvas
+  }
+
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+
+  // For 90 and 270 degrees, swap width and height
+  if (rotation.value === 90 || rotation.value === 270) {
+    canvas.width = sourceCanvas.height
+    canvas.height = sourceCanvas.width
+  } else {
+    canvas.width = sourceCanvas.width
+    canvas.height = sourceCanvas.height
+  }
+
+  // Move to center, rotate, then draw
+  ctx.translate(canvas.width / 2, canvas.height / 2)
+  ctx.rotate((rotation.value * Math.PI) / 180)
+  ctx.drawImage(sourceCanvas, -sourceCanvas.width / 2, -sourceCanvas.height / 2)
+
+  return canvas
+}
+
 // Image processing
 const processDocument = async () => {
-  if (!selectedFile.value) return
+  if (!selectedFile.value || !sourceCanvas.value) return
 
   processing.value = true
   progress.value = 0
@@ -146,7 +335,7 @@ const processDocument = async () => {
     if (isPdf) {
       await processPdf(file)
     } else {
-      await processImage(file)
+      await processImage()
     }
 
     statusMessage.value = `Successfully generated ${processedImages.value.length} A7 images!`
@@ -185,8 +374,11 @@ const processPdf = async (file) => {
       viewport: viewport
     }).promise
 
+    // Apply rotation
+    const rotatedCanvas = applyRotation(canvas)
+
     // Split this page into A7 pieces
-    const pieces = await splitIntoA7(canvas, baseName, imageCounter)
+    const pieces = await splitIntoA7(rotatedCanvas, baseName, imageCounter)
     processedImages.value.push(...pieces)
     imageCounter += pieces.length
 
@@ -194,43 +386,21 @@ const processPdf = async (file) => {
   }
 }
 
-const processImage = async (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
+const processImage = async () => {
+  progress.value = 30
 
-    reader.onload = async (e) => {
-      try {
-        progress.value = 30
+  // Use the already loaded source canvas
+  const baseName = selectedFile.value.name.replace(/\.\w+$/, '')
 
-        const img = new Image()
-        img.onload = async () => {
-          const canvas = document.createElement('canvas')
-          canvas.width = img.width
-          canvas.height = img.height
+  // Apply rotation
+  const rotatedCanvas = applyRotation(sourceCanvas.value)
 
-          const ctx = canvas.getContext('2d')
-          ctx.drawImage(img, 0, 0)
+  progress.value = 50
 
-          progress.value = 50
+  const pieces = await splitIntoA7(rotatedCanvas, baseName, 1)
+  processedImages.value = pieces
 
-          const baseName = file.name.replace(/\.\w+$/, '')
-          const pieces = await splitIntoA7(canvas, baseName, 1)
-          processedImages.value = pieces
-
-          progress.value = 100
-          resolve()
-        }
-
-        img.onerror = () => reject(new Error('Failed to load image'))
-        img.src = e.target.result
-      } catch (error) {
-        reject(error)
-      }
-    }
-
-    reader.onerror = () => reject(new Error('Failed to read file'))
-    reader.readAsDataURL(file)
-  })
+  progress.value = 100
 }
 
 const splitIntoA7 = async (canvas, baseName, startIndex) => {
