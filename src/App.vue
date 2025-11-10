@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <h1>📄 A4 to A7 Document Splitter</h1>
-    <p class="subtitle">Upload an A4 document (portrait or landscape) and automatically split it into 8 properly-sized A7 JPG images</p>
+    <p class="subtitle">Upload one A4 page (portrait or landscape), select if it's your first or second page, then split it into 8 properly-sized A7 JPG images</p>
 
     <!-- Upload Area -->
     <div
@@ -34,8 +34,8 @@
       <div v-if="previewUrl" class="source-preview-section">
         <div class="preview-header">
           <h3>Preview:</h3>
-          <div v-if="pdfPageCount > 0" class="page-info">
-            Page {{ selectedPage }} of {{ pdfPageCount }}
+          <div v-if="pdfPageCount > 1" class="page-info">
+            Viewing: Page {{ selectedPage }} of {{ pdfPageCount }}
           </div>
         </div>
         <div class="preview-container">
@@ -46,14 +46,14 @@
           ></canvas>
         </div>
 
-        <!-- Page Selection Toggle (for PDFs with 2 pages) -->
-        <div v-if="pdfPageCount === 2" class="page-selection">
-          <h4>Select Page to Process:</h4>
+        <!-- Page Position Selector (always shown) -->
+        <div class="page-selection">
+          <h4>This source image represents:</h4>
           <div class="page-selection-buttons">
             <button
               class="btn-page-select"
               :class="{ active: selectedPage === 1 }"
-              @click="setPage(1)"
+              @click="setPagePosition(1)"
               :disabled="processing"
             >
               First Page
@@ -61,12 +61,13 @@
             <button
               class="btn-page-select"
               :class="{ active: selectedPage === 2 }"
-              @click="setPage(2)"
+              @click="setPagePosition(2)"
               :disabled="processing"
             >
               Second Page
             </button>
           </div>
+          <p class="page-hint">Choose whether this is the first or second page of your document</p>
         </div>
 
         <!-- Rotation Controls -->
@@ -236,11 +237,12 @@ const setRotation = (degrees) => {
   rotation.value = degrees
 }
 
-// Page selection control
-const setPage = async (pageNum) => {
+// Page position control
+const setPagePosition = async (pageNum) => {
   selectedPage.value = pageNum
-  if (pdfDocument.value) {
-    // Reload preview with new page
+
+  // If this is a 2-page PDF, reload the preview with the selected page
+  if (pdfDocument.value && pdfPageCount.value === 2) {
     const page = await pdfDocument.value.getPage(pageNum)
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')
@@ -257,6 +259,7 @@ const setPage = async (pageNum) => {
     sourceCanvas.value = canvas
     await drawPreview(canvas)
   }
+  // For single page images/PDFs, this just marks the position (1st or 2nd page)
 }
 
 // Load preview
@@ -465,8 +468,12 @@ const processPdf = async (file) => {
   // Apply rotation
   const rotatedCanvas = applyRotation(canvas)
 
+  // Calculate start index based on selected page position
+  // First page: 1-8, Second page: 9-16
+  const startIndex = selectedPage.value === 1 ? 1 : 9
+
   // Split this page into A7 pieces
-  const pieces = await splitIntoA7(rotatedCanvas, baseName, 1)
+  const pieces = await splitIntoA7(rotatedCanvas, baseName, startIndex)
   processedImages.value = pieces
 
   progress.value = 100
@@ -483,7 +490,11 @@ const processImage = async () => {
 
   progress.value = 50
 
-  const pieces = await splitIntoA7(rotatedCanvas, baseName, 1)
+  // Calculate start index based on selected page position
+  // First page: 1-8, Second page: 9-16
+  const startIndex = selectedPage.value === 1 ? 1 : 9
+
+  const pieces = await splitIntoA7(rotatedCanvas, baseName, startIndex)
   processedImages.value = pieces
 
   progress.value = 100

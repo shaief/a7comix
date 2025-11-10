@@ -316,6 +316,13 @@ h1 {
   font-size: 1.1rem;
 }
 
+.page-hint {
+  margin-top: 12px;
+  color: #666;
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
 .page-selection-buttons {
   display: flex;
   gap: 12px;

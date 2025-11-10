@@ -1,16 +1,18 @@
 # A4 to A7 Document Splitter
 
-A Vue.js web application that splits each A4 scanned documents into 8 A7-sized JPG images.
+A Vue.js web application that splits A4 scanned documents into 8 A7-sized JPG images.
 
 ## Features
 
-- Upload A4 documents in various formats (JPG, PNG, PDF, etc.)
-- Automatically splits each A4 page into 8 A7-sized pieces (2 columns × 4 rows)
-- Generates JPG images with original filename + number (1-8, 9-16, etc.)
+- Upload A4 documents in various formats (JPG, PNG, PDF - max 2 pages)
+- Automatically splits each A4 page into 8 A7-sized pieces
+- Select whether the page represents "First Page" or "Second Page" of your document
+- Generates JPG images numbered accordingly (1-8 for first page, 9-16 for second page)
+- Rotate documents before splitting (0°, 90°, 180°, 270°)
 - Drag-and-drop file upload support
-- Real-time preview of generated images
+- Real-time preview of the document
 - Batch download all generated images
-- Supports multi-page PDFs (generates 8 images per page)
+- Automatic orientation detection (portrait/landscape)
 
 ## Setup
 
@@ -29,9 +31,11 @@ npm run dev
 ## Usage
 
 1. Click the upload area or drag and drop an A4 document
-2. Click "Split into A7 Images" to process
-3. Preview the generated images
-4. Click "Download All Images" to save them to your computer
+2. Preview the document and select if it's your "First Page" or "Second Page"
+3. Rotate if needed using the rotation buttons
+4. Click "Split into A7 Images" to process
+5. Preview the generated images
+6. Click "Download All Images" to save them to your computer
 
 ## How it works
 
@@ -61,10 +65,13 @@ The application automatically detects the orientation of your document and split
 └───┴───┴───┴───┘
 ```
 
-Each piece is exported as a properly proportioned A7-sized JPG image (74mm × 105mm ratio) with the naming format:
-`originalname_1.jpg`, `originalname_2.jpg`, ... `originalname_8.jpg`
+Each piece is exported as a properly proportioned A7-sized JPG image (74mm × 105mm ratio).
 
-For multi-page PDFs, numbering continues: page 2 would be `originalname_9.jpg` through `originalname_16.jpg`, etc.
+**File Naming:**
+- **First Page** selected: `originalname_1.jpg` through `originalname_8.jpg`
+- **Second Page** selected: `originalname_9.jpg` through `originalname_16.jpg`
+
+This allows you to process both pages of a two-page document separately and get correctly numbered output files.
 
 ## Deployment
 
