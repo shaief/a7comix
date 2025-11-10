@@ -213,9 +213,25 @@ h1 {
   margin: 30px 0;
 }
 
-.source-preview-section h3 {
+.preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 15px;
+}
+
+.preview-header h3 {
+  margin: 0;
   color: #333;
+}
+
+.page-info {
+  background: #667eea;
+  color: white;
+  padding: 6px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .preview-container {
@@ -281,6 +297,59 @@ h1 {
 }
 
 .btn-rotation:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-selection {
+  margin: 25px 0;
+  text-align: center;
+  padding: 20px;
+  background: #f8f9ff;
+  border-radius: 12px;
+  border: 2px solid #e0e0ff;
+}
+
+.page-selection h4 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.page-selection-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-page-select {
+  padding: 14px 28px;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 120px;
+}
+
+.btn-page-select:hover:not(:disabled) {
+  background: #f0f1ff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.btn-page-select.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.btn-page-select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }

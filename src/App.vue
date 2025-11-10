@@ -32,13 +32,41 @@
 
       <!-- Source Preview -->
       <div v-if="previewUrl" class="source-preview-section">
-        <h3>Preview:</h3>
+        <div class="preview-header">
+          <h3>Preview:</h3>
+          <div v-if="pdfPageCount > 0" class="page-info">
+            Page {{ selectedPage }} of {{ pdfPageCount }}
+          </div>
+        </div>
         <div class="preview-container">
           <canvas
             ref="previewCanvas"
             class="source-preview-canvas"
             :style="{ transform: `rotate(${rotation}deg)` }"
           ></canvas>
+        </div>
+
+        <!-- Page Selection Toggle (for PDFs with 2 pages) -->
+        <div v-if="pdfPageCount === 2" class="page-selection">
+          <h4>Select Page to Process:</h4>
+          <div class="page-selection-buttons">
+            <button
+              class="btn-page-select"
+              :class="{ active: selectedPage === 1 }"
+              @click="setPage(1)"
+              :disabled="processing"
+            >
+              First Page
+            </button>
+            <button
+              class="btn-page-select"
+              :class="{ active: selectedPage === 2 }"
+              @click="setPage(2)"
+              :disabled="processing"
+            >
+              Second Page
+            </button>
+          </div>
         </div>
 
         <!-- Rotation Controls -->
@@ -143,6 +171,9 @@ const statusType = ref('info')
 const previewUrl = ref('')
 const rotation = ref(0)
 const sourceCanvas = ref(null)
+const selectedPage = ref(1) // 1 for first page, 2 for second page
+const pdfPageCount = ref(0)
+const pdfDocument = ref(null)
 
 // Initialize PDF.js worker
 onMounted(() => {
@@ -162,6 +193,9 @@ const handleFileSelect = (event) => {
     processedImages.value = []
     statusMessage.value = ''
     rotation.value = 0
+    selectedPage.value = 1
+    pdfPageCount.value = 0
+    pdfDocument.value = null
     loadPreview(file)
   }
 }
@@ -174,6 +208,9 @@ const handleDrop = (event) => {
     processedImages.value = []
     statusMessage.value = ''
     rotation.value = 0
+    selectedPage.value = 1
+    pdfPageCount.value = 0
+    pdfDocument.value = null
     loadPreview(file)
   }
 }
@@ -186,6 +223,9 @@ const reset = () => {
   previewUrl.value = ''
   rotation.value = 0
   sourceCanvas.value = null
+  selectedPage.value = 1
+  pdfPageCount.value = 0
+  pdfDocument.value = null
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -194,6 +234,29 @@ const reset = () => {
 // Rotation control
 const setRotation = (degrees) => {
   rotation.value = degrees
+}
+
+// Page selection control
+const setPage = async (pageNum) => {
+  selectedPage.value = pageNum
+  if (pdfDocument.value) {
+    // Reload preview with new page
+    const page = await pdfDocument.value.getPage(pageNum)
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+
+    const viewport = page.getViewport({ scale: 2.0 })
+    canvas.width = viewport.width
+    canvas.height = viewport.height
+
+    await page.render({
+      canvasContext: context,
+      viewport: viewport
+    }).promise
+
+    sourceCanvas.value = canvas
+    await drawPreview(canvas)
+  }
 }
 
 // Load preview
@@ -244,7 +307,27 @@ const loadImagePreview = async (file) => {
 const loadPdfPreview = async (file) => {
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  const page = await pdf.getPage(1)
+
+  // Check page count
+  pdfPageCount.value = pdf.numPages
+
+  if (pdf.numPages > 2) {
+    statusMessage.value = `⚠️ This PDF has ${pdf.numPages} pages. Only PDFs with 1 or 2 pages are supported. Please upload a different file.`
+    statusType.value = 'error'
+    selectedFile.value = null
+    previewUrl.value = ''
+    pdfPageCount.value = 0
+    if (fileInput.value) {
+      fileInput.value.value = ''
+    }
+    return
+  }
+
+  // Store the PDF document for later use
+  pdfDocument.value = pdf
+
+  // Load the selected page (default is page 1)
+  const page = await pdf.getPage(selectedPage.value)
 
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')
@@ -351,39 +434,42 @@ const processDocument = async () => {
 }
 
 const processPdf = async (file) => {
-  const arrayBuffer = await file.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  // Use the already loaded PDF document if available
+  let pdf = pdfDocument.value
+  if (!pdf) {
+    const arrayBuffer = await file.arrayBuffer()
+    pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  }
 
   const baseName = file.name.replace(/\.\w+$/, '')
-  let imageCounter = 1
 
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    progress.value = (pageNum / pdf.numPages) * 50
+  progress.value = 30
 
-    const page = await pdf.getPage(pageNum)
-    const canvas = document.createElement('canvas')
-    const context = canvas.getContext('2d')
+  // Process only the selected page
+  const page = await pdf.getPage(selectedPage.value)
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
 
-    // Render at high resolution
-    const viewport = page.getViewport({ scale: 2.0 })
-    canvas.width = viewport.width
-    canvas.height = viewport.height
+  // Render at high resolution
+  const viewport = page.getViewport({ scale: 2.0 })
+  canvas.width = viewport.width
+  canvas.height = viewport.height
 
-    await page.render({
-      canvasContext: context,
-      viewport: viewport
-    }).promise
+  await page.render({
+    canvasContext: context,
+    viewport: viewport
+  }).promise
 
-    // Apply rotation
-    const rotatedCanvas = applyRotation(canvas)
+  progress.value = 50
 
-    // Split this page into A7 pieces
-    const pieces = await splitIntoA7(rotatedCanvas, baseName, imageCounter)
-    processedImages.value.push(...pieces)
-    imageCounter += pieces.length
+  // Apply rotation
+  const rotatedCanvas = applyRotation(canvas)
 
-    progress.value = 50 + (pageNum / pdf.numPages) * 50
-  }
+  // Split this page into A7 pieces
+  const pieces = await splitIntoA7(rotatedCanvas, baseName, 1)
+  processedImages.value = pieces
+
+  progress.value = 100
 }
 
 const processImage = async () => {
