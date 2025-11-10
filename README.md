@@ -1,6 +1,6 @@
 # A4 to A7 Document Splitter
 
-A Vue.js web application that splits A4 scanned documents into 8 A7-sized JPG images.
+A Vue.js web application that splits each A4 scanned documents into 8 A7-sized JPG images.
 
 ## Features
 
