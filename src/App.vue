@@ -174,10 +174,13 @@
       {{ statusMessage }}
     </div>
 
-    <!-- Download Button -->
+    <!-- Download and Reset Buttons -->
     <div v-if="processedImages.length > 0" class="button-group">
-      <button class="btn btn-primary" @click="downloadAll">
-        Download All Images ({{ processedImages.length }})
+      <button class="btn btn-primary" @click="downloadAllAsZip">
+        Download as ZIP ({{ processedImages.length }} images)
+      </button>
+      <button class="btn btn-secondary" @click="reset">
+        Upload Another Document
       </button>
     </div>
 
@@ -194,6 +197,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
 import * as pdfjsLib from 'pdfjs-dist'
+import JSZip from 'jszip'
 
 // State
 const selectedFile = ref(null)
@@ -782,40 +786,54 @@ const splitIntoA7 = async (canvas, baseName, startIndex, isFirstPage, currentOrd
   return pieces
 }
 
-// Download functionality
-const downloadAll = () => {
-  processedImages.value.forEach((img, index) => {
-    // Create download link
-    const link = document.createElement('a')
+// Download functionality - create and download as ZIP
+const downloadAllAsZip = async () => {
+  try {
+    statusMessage.value = 'Creating ZIP file...'
+    statusType.value = 'info'
 
-    if (img.dataUrl.startsWith('blob:')) {
-      link.href = img.dataUrl
-    } else {
-      // Convert data URL to blob for better download support
-      fetch(img.dataUrl)
-        .then(res => res.blob())
-        .then(blob => {
-          const url = URL.createObjectURL(blob)
-          link.href = url
-          link.download = img.filename
-          link.click()
-          setTimeout(() => URL.revokeObjectURL(url), 100)
-        })
-      return
+    const zip = new JSZip()
+
+    // Add each image to the zip file
+    for (const img of processedImages.value) {
+      // Convert dataUrl/blob to actual blob
+      let blob
+      if (img.dataUrl.startsWith('blob:')) {
+        const response = await fetch(img.dataUrl)
+        blob = await response.blob()
+      } else {
+        const response = await fetch(img.dataUrl)
+        blob = await response.blob()
+      }
+
+      zip.file(img.filename, blob)
     }
 
-    link.download = img.filename
+    // Generate zip file
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+
+    // Create download link for the zip file
+    const url = URL.createObjectURL(zipBlob)
+    const link = document.createElement('a')
+    link.href = url
+
+    // Use original filename (without extension) + .zip
+    const originalName = selectedFile.value.name.replace(/\.\w+$/, '')
+    link.download = `${originalName}_a7_images.zip`
+
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
 
-    // Small delay between downloads to avoid browser blocking
-    if (index < processedImages.value.length - 1) {
-      setTimeout(() => {}, 100)
-    }
-  })
+    // Clean up
+    setTimeout(() => URL.revokeObjectURL(url), 100)
 
-  statusMessage.value = 'Download started for all images!'
-  statusType.value = 'success'
+    statusMessage.value = 'ZIP file downloaded successfully!'
+    statusType.value = 'success'
+  } catch (error) {
+    console.error('Error creating ZIP:', error)
+    statusMessage.value = `Error creating ZIP: ${error.message}`
+    statusType.value = 'error'
+  }
 }
 </script>
