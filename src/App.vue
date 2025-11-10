@@ -27,8 +27,19 @@
 
     <!-- File Info & Preview -->
     <div v-if="selectedFile && !processedImages.length" class="file-info">
-      <h3>Selected File:</h3>
-      <div class="file-name">{{ selectedFile.name }}</div>
+      <div class="file-header">
+        <div>
+          <h3>Selected File:</h3>
+          <div class="file-name">{{ selectedFile.name }}</div>
+        </div>
+        <button
+          class="btn btn-secondary btn-small"
+          @click="reset"
+          :disabled="processing"
+        >
+          Choose Different File
+        </button>
+      </div>
 
       <!-- Source Preview -->
       <div v-if="previewUrl" class="source-preview-section">
@@ -161,13 +172,6 @@
           :disabled="processing || !previewUrl"
         >
           {{ processing ? 'Processing...' : 'Split into A7 Images' }}
-        </button>
-        <button
-          class="btn btn-secondary"
-          @click="reset"
-          :disabled="processing"
-        >
-          Choose Different File
         </button>
       </div>
 
