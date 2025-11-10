@@ -66,6 +66,28 @@ Each piece is exported as a properly proportioned A7-sized JPG image (74mm × 10
 
 For multi-page PDFs, numbering continues: page 2 would be `originalname_9.jpg` through `originalname_16.jpg`, etc.
 
+## Deployment
+
+This project is configured for automatic deployment to GitHub Pages.
+
+### Live Demo
+Visit: **https://shaief.github.io/a7comix/**
+
+### Automatic Deployment
+
+The app automatically deploys to GitHub Pages when you push to the main/master branch. The GitHub Actions workflow handles the build and deployment process.
+
+### Manual Deployment Setup
+
+If this is your first deployment, enable GitHub Pages in your repository:
+
+1. Go to your GitHub repository settings
+2. Navigate to **Settings** → **Pages**
+3. Under **Source**, select **GitHub Actions**
+4. Push your code to trigger the deployment
+
+The workflow will automatically build and deploy the site.
+
 ## Build for Production
 
 ```bash
