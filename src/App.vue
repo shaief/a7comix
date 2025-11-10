@@ -91,7 +91,8 @@ const statusType = ref('info')
 
 // Initialize PDF.js worker
 onMounted(() => {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`
+  // Use the local worker file from public directory
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs'
 })
 
 // File handling
