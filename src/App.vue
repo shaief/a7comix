@@ -70,6 +70,42 @@
           <p class="page-hint">Choose whether this is the first or second page of your document</p>
         </div>
 
+        <!-- Ordering Mode Controls -->
+        <div class="ordering-controls">
+          <h4>Page Numbering Order:</h4>
+          <div class="ordering-buttons">
+            <button
+              class="btn-ordering"
+              :class="{ active: orderingMode === 'standard' }"
+              @click="setOrderingMode('standard')"
+              :disabled="processing"
+            >
+              Standard
+            </button>
+            <button
+              class="btn-ordering"
+              :class="{ active: orderingMode === 'rtl' }"
+              @click="setOrderingMode('rtl')"
+              :disabled="processing"
+            >
+              RTL Comix Booklet
+            </button>
+            <button
+              class="btn-ordering"
+              :class="{ active: orderingMode === 'ltr' }"
+              @click="setOrderingMode('ltr')"
+              :disabled="processing"
+            >
+              LTR Comix Booklet
+            </button>
+          </div>
+          <p class="ordering-hint">
+            Standard: Sequential 1-8/9-16 |
+            RTL: Right-to-left booklet layout |
+            LTR: Left-to-right booklet layout
+          </p>
+        </div>
+
         <!-- Rotation Controls -->
         <div class="rotation-controls">
           <h4>Rotate Document:</h4>
@@ -174,7 +210,9 @@ const rotation = ref(0)
 const sourceCanvas = ref(null)
 const selectedPage = ref(1) // 1 for first page, 2 for second page
 const pdfPageCount = ref(0)
-const pdfDocument = ref(null)
+// Store PDF document in plain variable to avoid Vue reactivity breaking PDF.js private fields
+let pdfDocument = null
+const orderingMode = ref('standard') // 'standard', 'rtl', 'ltr'
 
 // Initialize PDF.js worker
 onMounted(() => {
@@ -196,7 +234,8 @@ const handleFileSelect = (event) => {
     rotation.value = 0
     selectedPage.value = 1
     pdfPageCount.value = 0
-    pdfDocument.value = null
+    pdfDocument = null
+    orderingMode.value = 'standard'
     loadPreview(file)
   }
 }
@@ -211,7 +250,8 @@ const handleDrop = (event) => {
     rotation.value = 0
     selectedPage.value = 1
     pdfPageCount.value = 0
-    pdfDocument.value = null
+    pdfDocument = null
+    orderingMode.value = 'standard'
     loadPreview(file)
   }
 }
@@ -226,7 +266,8 @@ const reset = () => {
   sourceCanvas.value = null
   selectedPage.value = 1
   pdfPageCount.value = 0
-  pdfDocument.value = null
+  pdfDocument = null
+  orderingMode.value = 'standard'
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -237,55 +278,86 @@ const setRotation = (degrees) => {
   rotation.value = degrees
 }
 
+// Ordering mode control
+const setOrderingMode = (mode) => {
+  orderingMode.value = mode
+}
+
 // Page position control
-const setPagePosition = async (pageNum) => {
+const setPagePosition = (pageNum) => {
   selectedPage.value = pageNum
 
+  // Extract values before async operations
+  const storedPdf = pdfDocument
+  const pageCount = pdfPageCount.value
+
   // If this is a 2-page PDF, reload the preview with the selected page
-  if (pdfDocument.value && pdfPageCount.value === 2) {
-    const page = await pdfDocument.value.getPage(pageNum)
-    const canvas = document.createElement('canvas')
-    const context = canvas.getContext('2d')
+  if (storedPdf && pageCount === 2) {
+    storedPdf.getPage(pageNum).then(page => {
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
 
-    const viewport = page.getViewport({ scale: 2.0 })
-    canvas.width = viewport.width
-    canvas.height = viewport.height
+      const viewport = page.getViewport({ scale: 2.0 })
+      canvas.width = viewport.width
+      canvas.height = viewport.height
 
-    await page.render({
-      canvasContext: context,
-      viewport: viewport
-    }).promise
-
-    sourceCanvas.value = canvas
-    await drawPreview(canvas)
+      return page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise.then(() => canvas)
+    }).then(canvas => {
+      sourceCanvas.value = canvas
+      drawPreview(canvas)
+    })
   }
   // For single page images/PDFs, this just marks the position (1st or 2nd page)
 }
 
 // Load preview
-const loadPreview = async (file) => {
-  try {
-    const isPdf = file.type === 'application/pdf'
+const loadPreview = (file) => {
+  const isPdf = file.type === 'application/pdf'
 
-    if (isPdf) {
-      await loadPdfPreview(file)
-    } else {
-      await loadImagePreview(file)
-    }
-  } catch (error) {
-    console.error('Error loading preview:', error)
-    statusMessage.value = `Error loading preview: ${error.message}`
-    statusType.value = 'error'
+  if (isPdf) {
+    loadPdfPreview(file).then(result => {
+      // Now we're in a .then() callback, setting refs directly
+      if (result.error) {
+        statusMessage.value = result.message
+        statusType.value = 'error'
+        if (result.clearFile) {
+          selectedFile.value = null
+          previewUrl.value = ''
+          pdfPageCount.value = 0
+          if (fileInput.value) {
+            fileInput.value.value = ''
+          }
+        }
+      } else {
+        pdfPageCount.value = result.numPages
+        pdfDocument = result.pdf
+        sourceCanvas.value = result.canvas
+        drawPreview(result.canvas)
+      }
+    }).catch(error => {
+      console.error('Error loading preview:', error)
+      statusMessage.value = `Error loading preview: ${error.message}`
+      statusType.value = 'error'
+    })
+  } else {
+    loadImagePreview(file).catch(error => {
+      console.error('Error loading preview:', error)
+      statusMessage.value = `Error loading preview: ${error.message}`
+      statusType.value = 'error'
+    })
   }
 }
 
-const loadImagePreview = async (file) => {
+const loadImagePreview = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       const img = new Image()
-      img.onload = async () => {
+      img.onload = () => {
         // Create source canvas
         const canvas = document.createElement('canvas')
         canvas.width = img.width
@@ -295,7 +367,7 @@ const loadImagePreview = async (file) => {
         sourceCanvas.value = canvas
 
         // Draw preview
-        await drawPreview(canvas)
+        drawPreview(canvas)
         resolve()
       }
       img.onerror = () => reject(new Error('Failed to load image'))
@@ -308,29 +380,36 @@ const loadImagePreview = async (file) => {
 }
 
 const loadPdfPreview = async (file) => {
+  console.log('loadPdfPreview: start')
+  // Extract ALL ref values at the very beginning, before any awaits
+  const currentSelectedPage = selectedPage.value
+  const currentFileInput = fileInput.value
+
+  console.log('loadPdfPreview: before arrayBuffer')
   const arrayBuffer = await file.arrayBuffer()
+  console.log('loadPdfPreview: after arrayBuffer, before getDocument')
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  console.log('loadPdfPreview: after getDocument')
 
-  // Check page count
-  pdfPageCount.value = pdf.numPages
+  // Check page count - AVOID accessing .value after await
+  const numPages = pdf.numPages
+  console.log('loadPdfPreview: setting pdfPageCount')
 
-  if (pdf.numPages > 2) {
-    statusMessage.value = `⚠️ This PDF has ${pdf.numPages} pages. Only PDFs with 1 or 2 pages are supported. Please upload a different file.`
-    statusType.value = 'error'
-    selectedFile.value = null
-    previewUrl.value = ''
-    pdfPageCount.value = 0
-    if (fileInput.value) {
-      fileInput.value.value = ''
+  // Store values to set, then set them all at once by returning them
+  // and letting the caller set them
+  if (numPages > 2) {
+    // Return error state
+    return {
+      error: true,
+      message: `⚠️ This PDF has ${numPages} pages. Only PDFs with 1 or 2 pages are supported. Please upload a different file.`,
+      clearFile: true
     }
-    return
   }
 
-  // Store the PDF document for later use
-  pdfDocument.value = pdf
-
+  console.log('loadPdfPreview: before getPage')
   // Load the selected page (default is page 1)
-  const page = await pdf.getPage(selectedPage.value)
+  const page = await pdf.getPage(currentSelectedPage)
+  console.log('loadPdfPreview: after getPage')
 
   const canvas = document.createElement('canvas')
   const context = canvas.getContext('2d')
@@ -340,47 +419,61 @@ const loadPdfPreview = async (file) => {
   canvas.width = viewport.width
   canvas.height = viewport.height
 
+  console.log('loadPdfPreview: before render')
   await page.render({
     canvasContext: context,
     viewport: viewport
   }).promise
+  console.log('loadPdfPreview: after render')
 
-  sourceCanvas.value = canvas
-  await drawPreview(canvas)
+  // Return the canvas and pdf to be set by caller
+  return {
+    error: false,
+    canvas: canvas,
+    pdf: pdf,
+    numPages: numPages
+  }
 }
 
-const drawPreview = async (canvas) => {
+const drawPreview = (canvas) => {
+  console.log('drawPreview: start')
   // Set previewUrl first so the canvas element gets rendered
   previewUrl.value = 'loaded'
 
+  console.log('drawPreview: before nextTick')
   // Wait for Vue to render the canvas element
-  await nextTick()
+  nextTick().then(() => {
+    console.log('drawPreview: inside nextTick callback')
+    // Now safely access the ref
+    const previewCanvasEl = previewCanvas.value
 
-  if (!previewCanvas.value) {
-    console.error('Preview canvas ref not available')
-    return
-  }
+    if (!previewCanvasEl) {
+      console.error('Preview canvas ref not available')
+      return
+    }
 
-  const maxWidth = 600
-  const maxHeight = 800
-  let width = canvas.width
-  let height = canvas.height
+    const maxWidth = 600
+    const maxHeight = 800
+    let width = canvas.width
+    let height = canvas.height
 
-  // Scale down if needed
-  const scale = Math.min(maxWidth / width, maxHeight / height, 1)
-  width = width * scale
-  height = height * scale
+    // Scale down if needed
+    const scale = Math.min(maxWidth / width, maxHeight / height, 1)
+    width = width * scale
+    height = height * scale
 
-  previewCanvas.value.width = width
-  previewCanvas.value.height = height
+    previewCanvasEl.width = width
+    previewCanvasEl.height = height
 
-  const ctx = previewCanvas.value.getContext('2d')
-  ctx.drawImage(canvas, 0, 0, width, height)
+    const ctx = previewCanvasEl.getContext('2d')
+    ctx.drawImage(canvas, 0, 0, width, height)
+    console.log('drawPreview: done')
+  })
 }
 
 // Apply rotation to canvas
-const applyRotation = (sourceCanvas) => {
-  if (rotation.value === 0) {
+const applyRotation = (sourceCanvas, rotationDegrees) => {
+  if (rotationDegrees === 0) {
     return sourceCanvas
   }
 
@@ -388,7 +481,7 @@ const applyRotation = (sourceCanvas) => {
   const ctx = canvas.getContext('2d')
 
   // For 90 and 270 degrees, swap width and height
-  if (rotation.value === 90 || rotation.value === 270) {
+  if (rotationDegrees === 90 || rotationDegrees === 270) {
     canvas.width = sourceCanvas.height
     canvas.height = sourceCanvas.width
   } else {
@@ -398,115 +491,188 @@ const applyRotation = (sourceCanvas) => {
 
   // Move to center, rotate, then draw
   ctx.translate(canvas.width / 2, canvas.height / 2)
-  ctx.rotate((rotation.value * Math.PI) / 180)
+  ctx.rotate((rotationDegrees * Math.PI) / 180)
   ctx.drawImage(sourceCanvas, -sourceCanvas.width / 2, -sourceCanvas.height / 2)
 
   return canvas
 }
 
 // Image processing
-const processDocument = async () => {
+const processDocument = () => {
+  console.log('processDocument: START')
   if (!selectedFile.value || !sourceCanvas.value) return
 
+  console.log('processDocument: setting initial state')
   processing.value = true
   progress.value = 0
   processedImages.value = []
   statusMessage.value = 'Processing document...'
   statusType.value = 'info'
 
-  try {
-    const file = selectedFile.value
-    const isPdf = file.type === 'application/pdf'
+  console.log('processDocument: extracting file')
+  const file = selectedFile.value
+  const isPdf = file.type === 'application/pdf'
 
-    if (isPdf) {
-      await processPdf(file)
-    } else {
-      await processImage()
-    }
+  console.log('processDocument: setting progress to 20')
+  progress.value = 20
 
-    statusMessage.value = `Successfully generated ${processedImages.value.length} A7 images!`
+  const processPromise = isPdf ? processPdf(file) : processImage()
+
+  processPromise.then(pieces => {
+    console.log('processDocument: got', pieces.length, 'pieces')
+    console.log('processDocument: setting progress to 90')
+    progress.value = 90
+    console.log('processDocument: setting processedImages')
+    processedImages.value = pieces
+    console.log('processDocument: setting progress to 100')
+    progress.value = 100
+    console.log('processDocument: setting success message')
+    statusMessage.value = `Successfully generated ${pieces.length} A7 images!`
     statusType.value = 'success'
-  } catch (error) {
-    console.error('Error processing document:', error)
+    console.log('processDocument: SUCCESS')
+  }).catch(error => {
+    console.error('processDocument: ERROR', error)
     statusMessage.value = `Error: ${error.message}`
     statusType.value = 'error'
-  } finally {
+  }).finally(() => {
+    console.log('processDocument: FINALLY')
     processing.value = false
-    progress.value = 100
-  }
+  })
 }
 
-const processPdf = async (file) => {
-  // Use the already loaded PDF document if available
-  let pdf = pdfDocument.value
-  if (!pdf) {
-    const arrayBuffer = await file.arrayBuffer()
-    pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-  }
-
+const processPdf = (file) => {
+  console.log('processPdf: START')
+  // Extract all values at the beginning
+  const currentSelectedPage = selectedPage.value
+  const currentRotation = rotation.value
+  const currentOrderingMode = orderingMode.value
+  const storedPdf = pdfDocument
   const baseName = file.name.replace(/\.\w+$/, '')
 
-  progress.value = 30
+  // Use the already loaded PDF document if available
+  const pdfPromise = storedPdf
+    ? Promise.resolve(storedPdf)
+    : file.arrayBuffer().then(arrayBuffer => {
+        console.log('processPdf: after arrayBuffer')
+        return pdfjsLib.getDocument({ data: arrayBuffer }).promise
+      })
 
-  // Process only the selected page
-  const page = await pdf.getPage(selectedPage.value)
-  const canvas = document.createElement('canvas')
-  const context = canvas.getContext('2d')
+  return pdfPromise.then(pdf => {
+    console.log('processPdf: got pdf, getting page')
+    return pdf.getPage(currentSelectedPage)
+  }).then(page => {
+    console.log('processPdf: got page, creating canvas')
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
 
-  // Render at high resolution
-  const viewport = page.getViewport({ scale: 2.0 })
-  canvas.width = viewport.width
-  canvas.height = viewport.height
+    // Render at high resolution
+    const viewport = page.getViewport({ scale: 2.0 })
+    canvas.width = viewport.width
+    canvas.height = viewport.height
 
-  await page.render({
-    canvasContext: context,
-    viewport: viewport
-  }).promise
+    console.log('processPdf: rendering page')
+    return page.render({
+      canvasContext: context,
+      viewport: viewport
+    }).promise.then(() => canvas)
+  }).then(canvas => {
+    console.log('processPdf: rendered, applying rotation')
+    // Apply rotation
+    const rotatedCanvas = applyRotation(canvas, currentRotation)
 
-  progress.value = 50
+    // Determine if this is the first page
+    const isFirstPage = currentSelectedPage === 1
+    const startIndex = isFirstPage ? 1 : 9
 
-  // Apply rotation
-  const rotatedCanvas = applyRotation(canvas)
-
-  // Calculate start index based on selected page position
-  // First page: 1-8, Second page: 9-16
-  const startIndex = selectedPage.value === 1 ? 1 : 9
-
-  // Split this page into A7 pieces
-  const pieces = await splitIntoA7(rotatedCanvas, baseName, startIndex)
-  processedImages.value = pieces
-
-  progress.value = 100
+    console.log('processPdf: splitting into A7')
+    // Split this page into A7 pieces
+    return splitIntoA7(rotatedCanvas, baseName, startIndex, isFirstPage, currentOrderingMode)
+  }).then(pieces => {
+    console.log('processPdf: done, returning pieces')
+    return pieces
+  })
 }
 
-const processImage = async () => {
-  progress.value = 30
+const processImage = () => {
+  console.log('processImage: START')
+  // Extract all ref values at the beginning
+  const currentSelectedPage = selectedPage.value
+  const currentRotation = rotation.value
+  const currentOrderingMode = orderingMode.value
+  const currentSourceCanvas = sourceCanvas.value
+  const fileName = selectedFile.value.name
 
   // Use the already loaded source canvas
-  const baseName = selectedFile.value.name.replace(/\.\w+$/, '')
+  const baseName = fileName.replace(/\.\w+$/, '')
 
   // Apply rotation
-  const rotatedCanvas = applyRotation(sourceCanvas.value)
+  const rotatedCanvas = applyRotation(currentSourceCanvas, currentRotation)
 
-  progress.value = 50
+  // Determine if this is the first page
+  const isFirstPage = currentSelectedPage === 1
+  const startIndex = isFirstPage ? 1 : 9
 
-  // Calculate start index based on selected page position
-  // First page: 1-8, Second page: 9-16
-  const startIndex = selectedPage.value === 1 ? 1 : 9
-
-  const pieces = await splitIntoA7(rotatedCanvas, baseName, startIndex)
-  processedImages.value = pieces
-
-  progress.value = 100
+  console.log('processImage: calling splitIntoA7')
+  return splitIntoA7(rotatedCanvas, baseName, startIndex, isFirstPage, currentOrderingMode).then(pieces => {
+    console.log('processImage: done, returning pieces')
+    return pieces
+  })
 }
 
-const splitIntoA7 = async (canvas, baseName, startIndex) => {
+// Get page number based on ordering mode
+const getPageNumber = (position, isPortrait, isFirstPage, mode) => {
+  // For standard mode, just use sequential numbering
+  if (mode === 'standard') {
+    return isFirstPage ? position + 1 : position + 9
+  }
+
+  // RTL Comix Booklet Template
+  if (mode === 'rtl') {
+    if (isPortrait) {
+      // Portrait: 2 cols × 4 rows
+      // RTL portrait mapping (TBD - using standard for now)
+      const rtlPortraitFirst = [1, 2, 3, 4, 5, 6, 7, 8]
+      const rtlPortraitSecond = [9, 10, 11, 12, 13, 14, 15, 16]
+      return isFirstPage ? rtlPortraitFirst[position] : rtlPortraitSecond[position]
+    } else {
+      // Landscape: 4 cols × 2 rows
+      const rtlLandscapeFirst = [3, 14, 1, 16, 7, 10, 5, 12]
+      const rtlLandscapeSecond = [15, 2, 13, 4, 11, 6, 9, 8]
+      return isFirstPage ? rtlLandscapeFirst[position] : rtlLandscapeSecond[position]
+    }
+  }
+
+  // LTR Comix Booklet Template
+  if (mode === 'ltr') {
+    if (isPortrait) {
+      // Portrait: 2 cols × 4 rows
+      // LTR portrait mapping (TBD - using standard for now)
+      const ltrPortraitFirst = [1, 2, 3, 4, 5, 6, 7, 8]
+      const ltrPortraitSecond = [9, 10, 11, 12, 13, 14, 15, 16]
+      return isFirstPage ? ltrPortraitFirst[position] : ltrPortraitSecond[position]
+    } else {
+      // Landscape: 4 cols × 2 rows
+      // LTR landscape mapping (mirror of RTL - TBD)
+      const ltrLandscapeFirst = [1, 2, 3, 4, 5, 6, 7, 8]
+      const ltrLandscapeSecond = [9, 10, 11, 12, 13, 14, 15, 16]
+      return isFirstPage ? ltrLandscapeFirst[position] : ltrLandscapeSecond[position]
+    }
+  }
+
+  // Fallback to standard
+  return isFirstPage ? position + 1 : position + 9
+}
+
+const splitIntoA7 = async (canvas, baseName, startIndex, isFirstPage, currentOrderingMode) => {
+  console.log('splitIntoA7: START')
   const pieces = []
   const width = canvas.width
   const height = canvas.height
 
+  console.log('splitIntoA7: canvas size', width, 'x', height)
   // Detect orientation: portrait if height > width, landscape otherwise
   const isPortrait = height > width
+  console.log('splitIntoA7: isPortrait=', isPortrait)
 
   // A4 to A7 aspect ratio: A7 is 74mm × 105mm (ratio ≈ 0.7048)
   // For A4 portrait (210×297): split into 2 cols × 4 rows (A7 pieces are landscape 105×74)
@@ -552,10 +718,12 @@ const splitIntoA7 = async (canvas, baseName, startIndex) => {
     }
   }
 
-  statusMessage.value = `Processing ${isPortrait ? 'portrait' : 'landscape'} document into ${cols}×${rows} A7 pieces...`
+  // Note: Status message is set by the calling function
 
+  console.log('splitIntoA7: starting loop, rows=', rows, 'cols=', cols)
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
+      console.log('splitIntoA7: processing piece', row, col)
       const pieceCanvas = document.createElement('canvas')
 
       // Calculate actual dimensions to extract
@@ -585,6 +753,7 @@ const splitIntoA7 = async (canvas, baseName, startIndex) => {
         pieceCanvas.height // dest height
       )
 
+      console.log('splitIntoA7: before toBlob/toDataURL')
       // Convert to JPG with high quality
       const dataUrl = pieceCanvas.toBlob ?
         await new Promise(resolve => {
@@ -594,15 +763,22 @@ const splitIntoA7 = async (canvas, baseName, startIndex) => {
         }) :
         pieceCanvas.toDataURL('image/jpeg', 0.95)
 
-      const pieceIndex = startIndex + (row * cols + col)
+      console.log('splitIntoA7: after toBlob/toDataURL')
+      // Calculate position in the grid (0-7)
+      const position = row * cols + col
+      // Get the page number based on ordering mode
+      const pageNumber = getPageNumber(position, isPortrait, isFirstPage, currentOrderingMode)
+
+      console.log('splitIntoA7: pushing piece', pageNumber)
       pieces.push({
-        filename: `${baseName}_${pieceIndex}.jpg`,
+        filename: `${baseName}_${pageNumber}.jpg`,
         dataUrl: dataUrl,
         canvas: pieceCanvas
       })
     }
   }
 
+  console.log('splitIntoA7: done, returning', pieces.length, 'pieces')
   return pieces
 }
 

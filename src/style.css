@@ -360,3 +360,57 @@ h1 {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.ordering-controls {
+  margin: 25px 0;
+  text-align: center;
+}
+
+.ordering-controls h4 {
+  color: #333;
+  margin-bottom: 15px;
+  font-size: 1.1rem;
+}
+
+.ordering-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-ordering {
+  padding: 12px 20px;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.btn-ordering:hover:not(:disabled) {
+  background: #f0f1ff;
+  transform: translateY(-2px);
+}
+
+.btn-ordering.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: #667eea;
+}
+
+.btn-ordering:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ordering-hint {
+  margin-top: 12px;
+  color: #666;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
