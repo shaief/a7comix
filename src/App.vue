@@ -634,9 +634,10 @@ const getPageNumber = (position, isPortrait, isFirstPage, mode) => {
   if (mode === 'rtl') {
     if (isPortrait) {
       // Portrait: 2 cols × 4 rows
-      // RTL portrait mapping (TBD - using standard for now)
-      const rtlPortraitFirst = [1, 2, 3, 4, 5, 6, 7, 8]
-      const rtlPortraitSecond = [9, 10, 11, 12, 13, 14, 15, 16]
+      // First page: top row [7,3], 2nd row [10,14], 3rd row [5,1], last row [12,16]
+      // Second page: top row [11,15], 2nd row [6,2], 3rd row [9,13], last row [8,4]
+      const rtlPortraitFirst = [7, 3, 10, 14, 5, 1, 12, 16]
+      const rtlPortraitSecond = [11, 15, 6, 2, 9, 13, 8, 4]
       return isFirstPage ? rtlPortraitFirst[position] : rtlPortraitSecond[position]
     } else {
       // Landscape: 4 cols × 2 rows
