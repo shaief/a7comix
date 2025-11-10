@@ -35,7 +35,9 @@ npm run dev
 
 ## How it works
 
-The application splits an A4 document into a 2×4 grid (8 pieces total):
+The application automatically detects the orientation of your document and splits it accordingly:
+
+### Portrait A4 (2×4 grid = 8 A7 landscape pieces):
 
 ```
 ┌─────┬─────┐
@@ -49,7 +51,17 @@ The application splits an A4 document into a 2×4 grid (8 pieces total):
 └─────┴─────┘
 ```
 
-Each piece is exported as a high-quality JPG image with the naming format:
+### Landscape A4 (4×2 grid = 8 A7 portrait pieces):
+
+```
+┌───┬───┬───┬───┐
+│ 1 │ 2 │ 3 │ 4 │
+├───┼───┼───┼───┤
+│ 5 │ 6 │ 7 │ 8 │
+└───┴───┴───┴───┘
+```
+
+Each piece is exported as a properly proportioned A7-sized JPG image (74mm × 105mm ratio) with the naming format:
 `originalname_1.jpg`, `originalname_2.jpg`, ... `originalname_8.jpg`
 
 For multi-page PDFs, numbering continues: page 2 would be `originalname_9.jpg` through `originalname_16.jpg`, etc.
