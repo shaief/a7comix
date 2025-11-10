@@ -221,7 +221,8 @@ const orderingMode = ref('standard') // 'standard', 'rtl', 'ltr'
 // Initialize PDF.js worker
 onMounted(() => {
   // Use the local worker file from public directory
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.mjs'
+  // import.meta.env.BASE_URL accounts for GitHub Pages base path
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf.worker.mjs`
 })
 
 // File handling
