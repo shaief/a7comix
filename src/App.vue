@@ -322,7 +322,7 @@ const setPagePosition = (pageNum) => {
       const canvas = document.createElement('canvas')
       const context = canvas.getContext('2d')
 
-      const viewport = page.getViewport({ scale: 2.0 })
+      const viewport = page.getViewport({ scale: 4.2 })
       canvas.width = viewport.width
       canvas.height = viewport.height
 
@@ -442,7 +442,7 @@ const loadPdfPreview = async (file) => {
   const context = canvas.getContext('2d')
 
   // Render at high resolution
-  const viewport = page.getViewport({ scale: 2.0 })
+  const viewport = page.getViewport({ scale: 4.2 })
   canvas.width = viewport.width
   canvas.height = viewport.height
 
@@ -670,7 +670,7 @@ const processPdf = (file) => {
     const context = canvas.getContext('2d')
 
     // Render at high resolution
-    const viewport = page.getViewport({ scale: 2.0 })
+    const viewport = page.getViewport({ scale: 4.2 })
     canvas.width = viewport.width
     canvas.height = viewport.height
 
