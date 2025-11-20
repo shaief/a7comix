@@ -119,6 +119,9 @@
       <button class="btn btn-primary" @click="downloadAllAsZip">
         Download as ZIP ({{ processedImages.length }} images)
       </button>
+      <button class="btn btn-primary" @click="downloadAsPdf">
+        Download as PDF
+      </button>
       <button class="btn btn-secondary" @click="reset">
         Upload Different Files
       </button>
@@ -137,6 +140,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import JSZip from 'jszip'
+import { jsPDF } from 'jspdf'
 
 // State
 const selectedFiles = ref([])
@@ -372,6 +376,62 @@ const downloadAllAsZip = async () => {
   } catch (error) {
     console.error('Error creating ZIP:', error)
     statusMessage.value = `Error creating ZIP: ${error.message}`
+    statusType.value = 'error'
+  }
+}
+
+// Download functionality - create and download as PDF
+const downloadAsPdf = async () => {
+  try {
+    statusMessage.value = 'Creating PDF file...'
+    statusType.value = 'info'
+
+    if (processedImages.value.length === 0) {
+      throw new Error('No images to export')
+    }
+
+    // Get dimensions from first image's canvas
+    const firstImage = processedImages.value[0]
+    const canvas = firstImage.canvas
+    const widthMm = (canvas.width / 300) * 25.4  // Convert pixels at 300 DPI to mm
+    const heightMm = (canvas.height / 300) * 25.4
+
+    // Create PDF with custom page size matching the image dimensions
+    const pdf = new jsPDF({
+      orientation: widthMm > heightMm ? 'landscape' : 'portrait',
+      unit: 'mm',
+      format: [widthMm, heightMm]
+    })
+
+    // Add each image to the PDF
+    for (let i = 0; i < processedImages.value.length; i++) {
+      const img = processedImages.value[i]
+
+      // Add new page for all images except the first
+      if (i > 0) {
+        pdf.addPage([widthMm, heightMm], widthMm > heightMm ? 'landscape' : 'portrait')
+      }
+
+      // Convert canvas to image data
+      const imgData = img.canvas.toDataURL('image/jpeg', 0.95)
+
+      // Add image to PDF (fill entire page)
+      pdf.addImage(imgData, 'JPEG', 0, 0, widthMm, heightMm)
+    }
+
+    // Use first file's name (without extension) + _bleeds.pdf
+    const firstFile = sortedFiles.value[0]
+    const baseName = firstFile.name.replace(/\.\w+$/, '')
+    const filename = `${baseName}_bleeds.pdf`
+
+    // Save the PDF
+    pdf.save(filename)
+
+    statusMessage.value = 'PDF file downloaded successfully!'
+    statusType.value = 'success'
+  } catch (error) {
+    console.error('Error creating PDF:', error)
+    statusMessage.value = `Error creating PDF: ${error.message}`
     statusType.value = 'error'
   }
 }
