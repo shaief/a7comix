@@ -1,5 +1,10 @@
 <template>
   <div class="container">
+    <div class="app-nav">
+      <span class="nav-current">📄 A7 Splitter</span>
+      <span class="nav-separator">|</span>
+      <a href="pager.html" class="nav-link">📖 Pager</a>
+    </div>
     <h1>📄 A4 to A7 Document Splitter</h1>
     <p class="subtitle">Upload one A4 page (portrait or landscape), select if it's your first or second page, then split it into 8 properly-sized A7 JPG images</p>
 
