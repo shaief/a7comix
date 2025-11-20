@@ -228,7 +228,7 @@ const selectedPage = ref(1) // 1 for first page, 2 for second page
 const pdfPageCount = ref(0)
 // Store PDF document in plain variable to avoid Vue reactivity breaking PDF.js private fields
 let pdfDocument = null
-const orderingMode = ref('standard') // 'standard', 'rtl', 'ltr'
+const orderingMode = ref('rtl') // 'standard', 'rtl', 'ltr'
 
 // Initialize PDF.js worker
 onMounted(() => {
@@ -252,7 +252,7 @@ const handleFileSelect = (event) => {
     selectedPage.value = 1
     pdfPageCount.value = 0
     pdfDocument = null
-    orderingMode.value = 'standard'
+    orderingMode.value = 'rtl'
     loadPreview(file)
   }
 }
@@ -268,7 +268,7 @@ const handleDrop = (event) => {
     selectedPage.value = 1
     pdfPageCount.value = 0
     pdfDocument = null
-    orderingMode.value = 'standard'
+    orderingMode.value = 'rtl'
     loadPreview(file)
   }
 }
@@ -284,7 +284,7 @@ const reset = () => {
   selectedPage.value = 1
   pdfPageCount.value = 0
   pdfDocument = null
-  orderingMode.value = 'standard'
+  orderingMode.value = 'rtl'
   if (fileInput.value) {
     fileInput.value.value = ''
   }
