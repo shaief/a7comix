@@ -400,6 +400,26 @@
               Each split piece will be sized to the selected page size (bleeds included)
             </div>
           </div>
+
+          <!-- Output File Name Controls -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">📝</span>
+              <span class="setting-title">Output File Name</span>
+            </div>
+            <div class="file-name-input-container">
+              <input
+                type="text"
+                v-model="outputBaseName"
+                :disabled="processing"
+                placeholder="Enter base name for output files"
+                class="file-name-input"
+              >
+            </div>
+            <div class="setting-description">
+              Output files will be named: [base name]_1.jpg, [base name]_2.jpg, etc.
+            </div>
+          </div>
         </div>
       </div>
 
@@ -473,6 +493,7 @@ let pdfDocument = null
 const orderingMode = ref('rtl') // 'standard', 'rtl', 'ltr'
 const pageSize = ref('a7') // 'a7', 'a6', 'a5', 'a4'
 const page1ImageIndex = ref(0) // Which file is page 1 when 2 files are uploaded (0 or 1)
+const outputBaseName = ref('') // Custom base name for output files
 
 // Page size dimensions in mm (width x height for portrait orientation)
 const pageSizes = {
@@ -507,6 +528,7 @@ const handleFileSelect = (event) => {
     orderingMode.value = 'rtl'
     pageSize.value = 'a7'
     page1ImageIndex.value = 0
+    outputBaseName.value = files[0].name.replace(/\.\w+$/, '')
 
     // Load preview
     if (files.length === 1) {
@@ -532,6 +554,7 @@ const handleDrop = (event) => {
     pageSize.value = 'a7'
     orderingMode.value = 'rtl'
     page1ImageIndex.value = 0
+    outputBaseName.value = files[0].name.replace(/\.\w+$/, '')
 
     // Load preview
     if (files.length === 1) {
@@ -558,6 +581,7 @@ const reset = () => {
   orderingMode.value = 'rtl'
   pageSize.value = 'a7'
   page1ImageIndex.value = 0
+  outputBaseName.value = ''
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -1107,7 +1131,7 @@ const processFileAsPage = (file, pageNumber) => {
   const currentRotation = rotation.value
   const currentOrderingMode = orderingMode.value
   const currentPageSize = pageSize.value
-  const baseName = file.name.replace(/\.\w+$/, '')
+  const baseName = outputBaseName.value || file.name.replace(/\.\w+$/, '')
   const isPdf = file.type === 'application/pdf'
 
   if (isPdf) {
@@ -1167,7 +1191,7 @@ const processPdf = (file, pageNum = null) => {
   const currentOrderingMode = orderingMode.value
   const currentPageSize = pageSize.value
   const storedPdf = pdfDocument
-  const baseName = file.name.replace(/\.\w+$/, '')
+  const baseName = outputBaseName.value || file.name.replace(/\.\w+$/, '')
 
   // Use the already loaded PDF document if available
   const pdfPromise = storedPdf
@@ -1224,7 +1248,7 @@ const processImage = () => {
   const fileName = selectedFiles.value[0].name
 
   // Use the already loaded source canvas
-  const baseName = fileName.replace(/\.\w+$/, '')
+  const baseName = outputBaseName.value || fileName.replace(/\.\w+$/, '')
 
   // Apply rotation
   const rotatedCanvas = applyRotation(currentSourceCanvas, currentRotation)

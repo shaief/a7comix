@@ -136,6 +136,26 @@
             <span v-else>Odd pages: 5mm left + 3mm others | Even pages: 5mm right + 3mm others</span>
           </div>
         </div>
+
+        <!-- Output File Name Controls -->
+        <div class="setting-card">
+          <div class="setting-header">
+            <span class="setting-icon">📝</span>
+            <span class="setting-title">Output File Name</span>
+          </div>
+          <div class="file-name-input-container">
+            <input
+              type="text"
+              v-model="outputBaseName"
+              :disabled="processing"
+              placeholder="Enter base name for output files"
+              class="file-name-input"
+            >
+          </div>
+          <div class="setting-description">
+            Output files will be named: [base name]_bleed.jpg. ZIP and PDF will use [base name]_bleeds
+          </div>
+        </div>
       </div>
 
       <div class="button-group">
@@ -198,6 +218,7 @@ const statusMessage = ref('')
 const statusType = ref('info')
 const bookletMode = ref('rtl') // 'none', 'rtl', 'ltr'
 const pageSize = ref('a7') // 'a7', 'a6', 'a5', 'a4'
+const outputBaseName = ref('') // Custom base name for output files
 
 // Page size dimensions in mm (width x height for portrait orientation)
 const pageSizes = {
@@ -243,6 +264,9 @@ const handleFileSelect = (event) => {
     statusMessage.value = ''
     bookletMode.value = 'rtl'
     pageSize.value = 'a7'
+    // Extract base name from first file, removing trailing number and extension
+    const firstName = files[0].name.replace(/\.\w+$/, '').replace(/_?\d+$/, '')
+    outputBaseName.value = firstName
   }
 }
 
@@ -255,6 +279,9 @@ const handleDrop = (event) => {
     statusMessage.value = ''
     bookletMode.value = 'rtl'
     pageSize.value = 'a7'
+    // Extract base name from first file, removing trailing number and extension
+    const firstName = files[0].name.replace(/\.\w+$/, '').replace(/_?\d+$/, '')
+    outputBaseName.value = firstName
   }
 }
 
@@ -265,6 +292,7 @@ const reset = () => {
   progress.value = 0
   bookletMode.value = 'rtl'
   pageSize.value = 'a7'
+  outputBaseName.value = ''
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -330,10 +358,11 @@ const processImages = async () => {
     const total = sorted.length
     const currentMode = bookletMode.value
     const currentPageSize = pageSize.value
+    const currentBaseName = outputBaseName.value
 
     for (let i = 0; i < total; i++) {
       const file = sorted[i]
-      const processedImage = await addBleedToImage(file, i, currentMode, currentPageSize)
+      const processedImage = await addBleedToImage(file, i, currentMode, currentPageSize, currentBaseName)
       processedImages.value.push(processedImage)
       progress.value = Math.round(((i + 1) / total) * 100)
     }
@@ -349,7 +378,7 @@ const processImages = async () => {
   }
 }
 
-const addBleedToImage = (file, pageIndex, mode, pageSizeKey) => {
+const addBleedToImage = (file, pageIndex, mode, pageSizeKey, baseName = '') => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
@@ -403,7 +432,9 @@ const addBleedToImage = (file, pageIndex, mode, pageSizeKey) => {
         canvas.toBlob(
           (blob) => {
             const dataUrl = URL.createObjectURL(blob)
-            const filename = file.name.replace(/\.\w+$/, '_bleed.jpg')
+            // Use custom base name if provided, otherwise use file name
+            const fileBaseName = baseName || file.name.replace(/\.\w+$/, '')
+            const filename = `${fileBaseName}_bleed.jpg`
             resolve({
               filename: filename,
               dataUrl: dataUrl,
@@ -446,9 +477,8 @@ const downloadAllAsZip = async () => {
     const link = document.createElement('a')
     link.href = url
 
-    // Use first file's name (without extension) + _bleeds.zip
-    const firstFile = sortedFiles.value[0]
-    const baseName = firstFile.name.replace(/\.\w+$/, '')
+    // Use custom base name if provided, otherwise use first file's name
+    const baseName = outputBaseName.value || sortedFiles.value[0].name.replace(/\.\w+$/, '').replace(/_?\d+$/, '')
     link.download = `${baseName}_bleeds.zip`
 
     document.body.appendChild(link)
@@ -506,9 +536,8 @@ const downloadAsPdf = async () => {
       pdf.addImage(imgData, 'JPEG', 0, 0, widthMm, heightMm)
     }
 
-    // Use first file's name (without extension) + _bleeds.pdf
-    const firstFile = sortedFiles.value[0]
-    const baseName = firstFile.name.replace(/\.\w+$/, '')
+    // Use custom base name if provided, otherwise use first file's name
+    const baseName = outputBaseName.value || sortedFiles.value[0].name.replace(/\.\w+$/, '').replace(/_?\d+$/, '')
     const filename = `${baseName}_bleeds.pdf`
 
     // Save the PDF
