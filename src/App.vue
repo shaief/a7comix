@@ -184,51 +184,6 @@
             </div>
           </div>
 
-          <!-- Page Size Controls -->
-          <div class="setting-card">
-            <div class="setting-header">
-              <span class="setting-icon">📏</span>
-              <span class="setting-title">Output Page Size</span>
-            </div>
-            <div class="chip-group">
-              <button
-                class="chip"
-                :class="{ active: pageSize === 'a7' }"
-                @click="setPageSize('a7')"
-                :disabled="processing"
-              >
-                A7 (74×105mm)
-              </button>
-              <button
-                class="chip"
-                :class="{ active: pageSize === 'a6' }"
-                @click="setPageSize('a6')"
-                :disabled="processing"
-              >
-                A6 (105×148mm)
-              </button>
-              <button
-                class="chip"
-                :class="{ active: pageSize === 'a5' }"
-                @click="setPageSize('a5')"
-                :disabled="processing"
-              >
-                A5 (148×210mm)
-              </button>
-              <button
-                class="chip"
-                :class="{ active: pageSize === 'a4' }"
-                @click="setPageSize('a4')"
-                :disabled="processing"
-              >
-                A4 (210×297mm)
-              </button>
-            </div>
-            <div class="setting-description">
-              Each split piece will be sized to the selected page size (bleeds included)
-            </div>
-          </div>
-
           <!-- Output File Name Controls -->
           <div class="setting-card">
             <div class="setting-header">
@@ -373,51 +328,6 @@
               >
                 LTR Booklet
               </button>
-            </div>
-          </div>
-
-          <!-- Page Size Controls -->
-          <div class="setting-card">
-            <div class="setting-header">
-              <span class="setting-icon">📏</span>
-              <span class="setting-title">Output Page Size</span>
-            </div>
-            <div class="chip-group">
-              <button
-                class="chip"
-                :class="{ active: pageSize === 'a7' }"
-                @click="setPageSize('a7')"
-                :disabled="processing"
-              >
-                A7 (74×105mm)
-              </button>
-              <button
-                class="chip"
-                :class="{ active: pageSize === 'a6' }"
-                @click="setPageSize('a6')"
-                :disabled="processing"
-              >
-                A6 (105×148mm)
-              </button>
-              <button
-                class="chip"
-                :class="{ active: pageSize === 'a5' }"
-                @click="setPageSize('a5')"
-                :disabled="processing"
-              >
-                A5 (148×210mm)
-              </button>
-              <button
-                class="chip"
-                :class="{ active: pageSize === 'a4' }"
-                @click="setPageSize('a4')"
-                :disabled="processing"
-              >
-                A4 (210×297mm)
-              </button>
-            </div>
-            <div class="setting-description">
-              Each split piece will be sized to the selected page size (bleeds included)
             </div>
           </div>
 
@@ -631,11 +541,6 @@ const setOrderingMode = (mode) => {
     // Single-file mode: redraw single preview
     drawPreview(sourceCanvas.value)
   }
-}
-
-// Page size control
-const setPageSize = (size) => {
-  pageSize.value = size
 }
 
 // Page position control
