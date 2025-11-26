@@ -153,7 +153,7 @@
             >
           </div>
           <div class="setting-description">
-            Output files will be named: [base name]_bleed.jpg. ZIP and PDF will use [base name]_bleeds
+            Output files will be named: [base name]_1.jpg, [base name]_2.jpg, etc. (keeping original numbering)
           </div>
         </div>
       </div>
@@ -432,9 +432,20 @@ const addBleedToImage = (file, pageIndex, mode, pageSizeKey, baseName = '') => {
         canvas.toBlob(
           (blob) => {
             const dataUrl = URL.createObjectURL(blob)
-            // Use custom base name if provided, otherwise use file name
-            const fileBaseName = baseName || file.name.replace(/\.\w+$/, '')
-            const filename = `${fileBaseName}_bleed.jpg`
+
+            // Extract number from original filename
+            const originalName = file.name.replace(/\.\w+$/, '')
+            const numberMatch = originalName.match(/_?(\d+)$/)
+            const fileNumber = numberMatch ? numberMatch[1] : (pageIndex + 1)
+
+            // Use custom base name if provided, otherwise use file name (without number)
+            let filename
+            if (baseName) {
+              filename = `${baseName}_${fileNumber}.jpg`
+            } else {
+              filename = `${originalName}_bleed.jpg`
+            }
+
             resolve({
               filename: filename,
               dataUrl: dataUrl,
