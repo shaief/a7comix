@@ -153,7 +153,7 @@
             >
           </div>
           <div class="setting-description">
-            Output files will be named: [base name]_1.jpg, [base name]_2.jpg, etc. (keeping original numbering)
+            Leave empty to auto-derive from source files. Output: [base name]_1.jpg, [base name]_2.jpg, etc.
           </div>
         </div>
       </div>
@@ -438,13 +438,16 @@ const addBleedToImage = (file, pageIndex, mode, pageSizeKey, baseName = '') => {
             const numberMatch = originalName.match(/_?(\d+)$/)
             const fileNumber = numberMatch ? numberMatch[1] : (pageIndex + 1)
 
-            // Use custom base name if provided, otherwise use file name (without number)
-            let filename
+            // Determine base name: use custom if provided, otherwise derive from file name
+            let baseNameToUse
             if (baseName) {
-              filename = `${baseName}_${fileNumber}.jpg`
+              baseNameToUse = baseName
             } else {
-              filename = `${originalName}_bleed.jpg`
+              // Extract base name from file (remove trailing number)
+              baseNameToUse = originalName.replace(/_?\d+$/, '')
             }
+
+            const filename = `${baseNameToUse}_${fileNumber}.jpg`
 
             resolve({
               filename: filename,
