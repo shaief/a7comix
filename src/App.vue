@@ -1463,9 +1463,9 @@ const downloadAllAsZip = async () => {
     const link = document.createElement('a')
     link.href = url
 
-    // Use original filename (without extension) + .zip
-    const originalName = selectedFiles.value[0].name.replace(/\.\w+$/, '')
-    link.download = `${originalName}_images.zip`
+    // Use custom output name if set, otherwise use original filename
+    const baseName = outputBaseName.value || selectedFiles.value[0].name.replace(/\.\w+$/, '')
+    link.download = `${baseName}_images.zip`
 
     document.body.appendChild(link)
     link.click()
