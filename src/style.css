@@ -629,3 +629,44 @@ input:disabled + .slider {
   cursor: not-allowed;
   background: #f5f5f5;
 }
+
+/* Dual preview container styles */
+.dual-preview-section {
+  margin: 30px 0;
+}
+
+.dual-preview-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  margin-top: 20px;
+}
+
+.dual-preview-section .preview-item {
+  width: 100%;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f8f9ff;
+  padding: 15px;
+}
+
+.dual-preview-section .preview-label {
+  background: rgba(102, 126, 234, 0.9);
+  color: white;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 15px;
+  border-radius: 6px;
+}
+
+.dual-preview-section .source-preview-canvas {
+  max-width: 100%;
+  max-height: 500px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: white;
+  display: block;
+  margin: 0 auto;
+}

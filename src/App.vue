@@ -61,17 +61,19 @@
           ℹ️ Two files detected! Clicking "Generate" will create all 16 images (8 from each file) and automatically download them as a ZIP file.
         </div>
         <div class="dual-preview-container">
+          <!-- Page 1 Preview (always on top) -->
           <div class="preview-item">
-            <div class="preview-label">Page {{ page1ImageIndex === 0 ? '1' : '2' }}: {{ selectedFiles[0]?.name }}</div>
+            <div class="preview-label">Page 1: {{ selectedFiles[page1ImageIndex]?.name }}</div>
             <canvas
-              ref="previewCanvas"
+              ref="previewCanvasPage1"
               class="source-preview-canvas"
             ></canvas>
           </div>
+          <!-- Page 2 Preview (always on bottom) -->
           <div class="preview-item">
-            <div class="preview-label">Page {{ page1ImageIndex === 0 ? '2' : '1' }}: {{ selectedFiles[1]?.name }}</div>
+            <div class="preview-label">Page 2: {{ selectedFiles[page1ImageIndex === 0 ? 1 : 0]?.name }}</div>
             <canvas
-              ref="previewCanvas2"
+              ref="previewCanvasPage2"
               class="source-preview-canvas"
             ></canvas>
           </div>
@@ -406,6 +408,8 @@ const selectedFiles = ref([]) // Array to hold 1 or 2 files
 const fileInput = ref(null)
 const previewCanvas = ref(null)
 const previewCanvas2 = ref(null) // Second canvas for dual-file mode
+const previewCanvasPage1 = ref(null) // Canvas for page 1 in dual mode (always on top)
+const previewCanvasPage2 = ref(null) // Canvas for page 2 in dual mode (always on bottom)
 const isDragging = ref(false)
 const processing = ref(false)
 const progress = ref(0)
@@ -768,10 +772,10 @@ const drawDualPreviews = () => {
   previewUrl.value = 'dual-files'
 
   nextTick().then(() => {
-    const previewCanvasEl1 = previewCanvas.value
-    const previewCanvasEl2 = previewCanvas2.value
+    const previewCanvasElPage1 = previewCanvasPage1.value
+    const previewCanvasElPage2 = previewCanvasPage2.value
 
-    if (!previewCanvasEl1 || !previewCanvasEl2 || !sourceCanvas.value || !sourceCanvas2.value) {
+    if (!previewCanvasElPage1 || !previewCanvasElPage2 || !sourceCanvas.value || !sourceCanvas2.value) {
       console.error('Preview canvases not available')
       return
     }
@@ -780,17 +784,17 @@ const drawDualPreviews = () => {
     const currentOrderingMode = orderingMode.value
     const currentPage1Index = page1ImageIndex.value
 
-    // Determine which canvas is page 1 and which is page 2
-    const page1Canvas = currentPage1Index === 0 ? sourceCanvas.value : sourceCanvas2.value
-    const page2Canvas = currentPage1Index === 0 ? sourceCanvas2.value : sourceCanvas.value
+    // Determine which source canvas is page 1 and which is page 2
+    const page1SourceCanvas = currentPage1Index === 0 ? sourceCanvas.value : sourceCanvas2.value
+    const page2SourceCanvas = currentPage1Index === 0 ? sourceCanvas2.value : sourceCanvas.value
 
-    // Apply rotation and draw page 1
-    const rotatedCanvas1 = applyRotation(page1Canvas, currentRotation)
-    drawSinglePreviewToCanvas(rotatedCanvas1, previewCanvasEl1, true, currentOrderingMode)
+    // Apply rotation and draw page 1 to the top preview canvas
+    const rotatedCanvas1 = applyRotation(page1SourceCanvas, currentRotation)
+    drawSinglePreviewToCanvas(rotatedCanvas1, previewCanvasElPage1, true, currentOrderingMode)
 
-    // Apply rotation and draw page 2
-    const rotatedCanvas2 = applyRotation(page2Canvas, currentRotation)
-    drawSinglePreviewToCanvas(rotatedCanvas2, previewCanvasEl2, false, currentOrderingMode)
+    // Apply rotation and draw page 2 to the bottom preview canvas
+    const rotatedCanvas2 = applyRotation(page2SourceCanvas, currentRotation)
+    drawSinglePreviewToCanvas(rotatedCanvas2, previewCanvasElPage2, false, currentOrderingMode)
 
     console.log('drawDualPreviews: done')
   })
