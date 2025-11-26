@@ -49,7 +49,8 @@
               Choose Different File{{ selectedFiles.length > 1 ? 's' : '' }}
             </button>
           </div>
-          <div v-if="selectedFiles.length === 1" class="file-name">📄 {{ selectedFiles[0].name }}</div>
+          <div v-if="selectedFiles.length === 1 && pdfPageCount !== 2" class="file-name">📄 {{ selectedFiles[0].name }}</div>
+          <div v-else-if="selectedFiles.length === 1 && pdfPageCount === 2" class="file-name">📄 {{ selectedFiles[0].name }} <span class="file-badge">2 pages</span></div>
           <div v-else class="file-list">
             <div v-for="(file, idx) in selectedFiles" :key="idx" class="file-item">
               📄 {{ idx + 1 }}. {{ file.name }}
@@ -76,18 +77,27 @@
         </div>
       </div>
 
-      <!-- Dual File Preview (Two Files Mode) -->
-      <div v-if="previewUrl === 'dual-files'" class="dual-preview-section">
+      <!-- Dual File Preview (Two Files Mode or Two-Page PDF) -->
+      <div v-if="previewUrl === 'dual-files' || (previewUrl && pdfPageCount === 2)" class="dual-preview-section">
         <div class="preview-header">
           <h3>Preview:</h3>
         </div>
         <div class="info-banner">
-          ℹ️ Two files detected! Clicking "Generate" will create all 16 images (8 from each file) and automatically download them as a ZIP file.
+          <span v-if="selectedFiles.length === 2">
+            ℹ️ Two files detected! Clicking "Generate" will create all 16 images (8 from each file) and automatically download them as a ZIP file.
+          </span>
+          <span v-else-if="pdfPageCount === 2">
+            ℹ️ Two-page PDF detected! Clicking "Generate" will create all 16 images (8 from each page) and automatically download them as a ZIP file.
+          </span>
         </div>
         <div class="dual-preview-container">
           <!-- Page 1 Preview (left/top) -->
           <div class="preview-item">
-            <div class="preview-label">Page 1: {{ selectedFiles[page1ImageIndex]?.name }}</div>
+            <div class="preview-label">
+              <span v-if="selectedFiles.length === 2">Page 1: {{ selectedFiles[page1ImageIndex]?.name }}</span>
+              <span v-else-if="pdfPageCount === 2">Page 1 (from PDF Page {{ pdfPage1Index }})</span>
+              <span v-else>Page 1</span>
+            </div>
             <canvas
               ref="previewCanvasPage1"
               class="source-preview-canvas"
@@ -95,7 +105,11 @@
           </div>
           <!-- Page 2 Preview (right/bottom) -->
           <div class="preview-item">
-            <div class="preview-label">Page 2: {{ selectedFiles[page1ImageIndex === 0 ? 1 : 0]?.name }}</div>
+            <div class="preview-label">
+              <span v-if="selectedFiles.length === 2">Page 2: {{ selectedFiles[page1ImageIndex === 0 ? 1 : 0]?.name }}</span>
+              <span v-else-if="pdfPageCount === 2">Page 2 (from PDF Page {{ pdfPage1Index === 1 ? 2 : 1 }})</span>
+              <span v-else>Page 2</span>
+            </div>
             <canvas
               ref="previewCanvasPage2"
               class="source-preview-canvas"
@@ -105,13 +119,14 @@
 
         <!-- Modern Settings Controls -->
         <div class="settings-panel">
-          <!-- Page Order Selector (Two Files Mode) -->
-          <div class="setting-card">
+          <!-- Page Order Selector (Two Files Mode or Two-Page PDF) -->
+          <div v-if="selectedFiles.length === 2 || pdfPageCount === 2" class="setting-card">
             <div class="setting-header">
               <span class="setting-icon">📄</span>
               <span class="setting-title">Page Order</span>
             </div>
-            <div class="page-order-selector">
+            <!-- Two separate files -->
+            <div v-if="selectedFiles.length === 2" class="page-order-selector">
               <div class="page-order-item">
                 <span class="page-label">Page 1:</span>
                 <select v-model="page1ImageIndex" :disabled="processing" class="page-select" @change="drawDualPreviews">
@@ -122,6 +137,20 @@
               <div class="page-order-item">
                 <span class="page-label">Page 2:</span>
                 <span class="page-value">{{ selectedFiles[page1ImageIndex === 0 ? 1 : 0]?.name }}</span>
+              </div>
+            </div>
+            <!-- Two-page PDF -->
+            <div v-else-if="pdfPageCount === 2" class="page-order-selector">
+              <div class="page-order-item">
+                <span class="page-label">Page 1:</span>
+                <select v-model="pdfPage1Index" :disabled="processing" class="page-select" @change="drawDualPreviews">
+                  <option :value="1">PDF Page 1</option>
+                  <option :value="2">PDF Page 2</option>
+                </select>
+              </div>
+              <div class="page-order-item">
+                <span class="page-label">Page 2:</span>
+                <span class="page-value">PDF Page {{ pdfPage1Index === 1 ? 2 : 1 }}</span>
               </div>
             </div>
           </div>
@@ -413,6 +442,7 @@ let pdfDocument = null
 const orderingMode = ref('rtl') // 'standard', 'rtl', 'ltr'
 const pageSize = ref('a7') // 'a7', 'a6', 'a5', 'a4'
 const page1ImageIndex = ref(0) // Which file is page 1 when 2 files are uploaded (0 or 1)
+const pdfPage1Index = ref(1) // Which PDF page is page 1 when a 2-page PDF is uploaded (1 or 2)
 const outputBaseName = ref('') // Custom base name for output files
 
 // Page size dimensions in mm (width x height for portrait orientation)
@@ -448,6 +478,7 @@ const handleFileSelect = (event) => {
     orderingMode.value = 'rtl'
     pageSize.value = 'a7'
     page1ImageIndex.value = 0
+    pdfPage1Index.value = 1
     outputBaseName.value = files[0].name.replace(/\.\w+$/, '')
 
     // Load preview
@@ -474,6 +505,7 @@ const handleDrop = (event) => {
     pageSize.value = 'a7'
     orderingMode.value = 'rtl'
     page1ImageIndex.value = 0
+    pdfPage1Index.value = 1
     outputBaseName.value = files[0].name.replace(/\.\w+$/, '')
 
     // Load preview
@@ -501,6 +533,7 @@ const reset = () => {
   orderingMode.value = 'rtl'
   pageSize.value = 'a7'
   page1ImageIndex.value = 0
+  pdfPage1Index.value = 1
   outputBaseName.value = ''
   if (fileInput.value) {
     fileInput.value.value = ''
@@ -511,8 +544,9 @@ const reset = () => {
 const setRotation = (degrees) => {
   rotation.value = degrees
   // Redraw preview to update grid overlay
-  if (selectedFiles.value.length === 2 && sourceCanvas.value && sourceCanvas2.value) {
-    // Dual-file mode: redraw both previews
+  const isTwoPagePdf = pdfPageCount.value === 2
+  if ((selectedFiles.value.length === 2 || isTwoPagePdf) && sourceCanvas.value && sourceCanvas2.value) {
+    // Dual-file mode or 2-page PDF: redraw both previews
     drawDualPreviews()
   } else if (sourceCanvas.value) {
     // Single-file mode: redraw single preview
@@ -524,8 +558,9 @@ const setRotation = (degrees) => {
 const setOrderingMode = (mode) => {
   orderingMode.value = mode
   // Redraw preview to update grid overlay numbers
-  if (selectedFiles.value.length === 2 && sourceCanvas.value && sourceCanvas2.value) {
-    // Dual-file mode: redraw both previews
+  const isTwoPagePdf = pdfPageCount.value === 2
+  if ((selectedFiles.value.length === 2 || isTwoPagePdf) && sourceCanvas.value && sourceCanvas2.value) {
+    // Dual-file mode or 2-page PDF: redraw both previews
     drawDualPreviews()
   } else if (sourceCanvas.value) {
     // Single-file mode: redraw single preview
@@ -586,8 +621,16 @@ const loadPreview = (file) => {
       } else {
         pdfPageCount.value = result.numPages
         pdfDocument = result.pdf
-        sourceCanvas.value = result.canvas
-        drawPreview(result.canvas)
+
+        // Handle 2-page PDF like dual files
+        if (result.numPages === 2) {
+          sourceCanvas.value = result.canvas1
+          sourceCanvas2.value = result.canvas2
+          drawDualPreviews()
+        } else {
+          sourceCanvas.value = result.canvas
+          drawPreview(result.canvas)
+        }
       }
     }).catch(error => {
       console.error('Error loading preview:', error)
@@ -655,6 +698,35 @@ const loadPdfPreview = async (file) => {
       error: true,
       message: `⚠️ This PDF has ${numPages} pages. Only PDFs with 1 or 2 pages are supported. Please upload a different file.`,
       clearFile: true
+    }
+  }
+
+  // For 2-page PDFs, load both pages
+  if (numPages === 2) {
+    console.log('loadPdfPreview: loading both pages')
+    const page1 = await pdf.getPage(1)
+    const page2 = await pdf.getPage(2)
+
+    const canvas1 = document.createElement('canvas')
+    const context1 = canvas1.getContext('2d')
+    const viewport1 = page1.getViewport({ scale: 4.2 })
+    canvas1.width = viewport1.width
+    canvas1.height = viewport1.height
+    await page1.render({ canvasContext: context1, viewport: viewport1 }).promise
+
+    const canvas2 = document.createElement('canvas')
+    const context2 = canvas2.getContext('2d')
+    const viewport2 = page2.getViewport({ scale: 4.2 })
+    canvas2.width = viewport2.width
+    canvas2.height = viewport2.height
+    await page2.render({ canvasContext: context2, viewport: viewport2 }).promise
+
+    return {
+      error: false,
+      canvas1: canvas1,
+      canvas2: canvas2,
+      pdf: pdf,
+      numPages: numPages
     }
   }
 
@@ -769,10 +841,21 @@ const drawDualPreviews = () => {
     const currentRotation = rotation.value
     const currentOrderingMode = orderingMode.value
     const currentPage1Index = page1ImageIndex.value
+    const currentPdfPage1Index = pdfPage1Index.value
+    const isTwoPagePdf = pdfPageCount.value === 2
 
     // Determine which source canvas is page 1 and which is page 2
-    const page1SourceCanvas = currentPage1Index === 0 ? sourceCanvas.value : sourceCanvas2.value
-    const page2SourceCanvas = currentPage1Index === 0 ? sourceCanvas2.value : sourceCanvas.value
+    let page1SourceCanvas, page2SourceCanvas
+
+    if (isTwoPagePdf) {
+      // For 2-page PDFs, use pdfPage1Index to determine order
+      page1SourceCanvas = currentPdfPage1Index === 1 ? sourceCanvas.value : sourceCanvas2.value
+      page2SourceCanvas = currentPdfPage1Index === 1 ? sourceCanvas2.value : sourceCanvas.value
+    } else {
+      // For dual separate files, use page1ImageIndex
+      page1SourceCanvas = currentPage1Index === 0 ? sourceCanvas.value : sourceCanvas2.value
+      page2SourceCanvas = currentPage1Index === 0 ? sourceCanvas2.value : sourceCanvas.value
+    }
 
     // Apply rotation and draw page 1 to the top preview canvas
     const rotatedCanvas1 = applyRotation(page1SourceCanvas, currentRotation)
@@ -997,9 +1080,15 @@ const processDocument = () => {
     if (isTwoPagePdf) {
       console.log('processDocument: processing two-page PDF')
       statusMessage.value = 'Processing both pages...'
+
+      // Respect the page order selection
+      const currentPdfPage1Index = pdfPage1Index.value
+      const pdfPageNum1 = currentPdfPage1Index // 1 or 2
+      const pdfPageNum2 = currentPdfPage1Index === 1 ? 2 : 1 // the other page
+
       processPromise = Promise.all([
-        processPdf(file, 1),
-        processPdf(file, 2)
+        processPdf(file, pdfPageNum1),
+        processPdf(file, pdfPageNum2)
       ]).then(([page1Pieces, page2Pieces]) => {
         console.log('processDocument: combining pieces from both pages')
         return [...page1Pieces, ...page2Pieces]
