@@ -52,8 +52,187 @@
         </button>
       </div>
 
+      <!-- Dual File Preview (Two Files Mode) -->
+      <div v-if="previewUrl === 'dual-files'" class="dual-preview-section">
+        <div class="preview-header">
+          <h3>Preview:</h3>
+        </div>
+        <div class="info-banner">
+          ℹ️ Two files detected! Clicking "Generate" will create all 16 images (8 from each file) and automatically download them as a ZIP file.
+        </div>
+        <div class="dual-preview-container">
+          <div class="preview-item">
+            <div class="preview-label">Page {{ page1ImageIndex === 0 ? '1' : '2' }}: {{ selectedFiles[0]?.name }}</div>
+            <canvas
+              ref="previewCanvas"
+              class="source-preview-canvas"
+            ></canvas>
+          </div>
+          <div class="preview-item">
+            <div class="preview-label">Page {{ page1ImageIndex === 0 ? '2' : '1' }}: {{ selectedFiles[1]?.name }}</div>
+            <canvas
+              ref="previewCanvas2"
+              class="source-preview-canvas"
+            ></canvas>
+          </div>
+        </div>
+
+        <!-- Modern Settings Controls -->
+        <div class="settings-panel">
+          <!-- Page Order Selector (Two Files Mode) -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">📄</span>
+              <span class="setting-title">Page Order</span>
+            </div>
+            <div class="page-order-selector">
+              <div class="page-order-item">
+                <span class="page-label">Page 1:</span>
+                <select v-model="page1ImageIndex" :disabled="processing" class="page-select" @change="drawDualPreviews">
+                  <option :value="0">{{ selectedFiles[0]?.name }}</option>
+                  <option :value="1">{{ selectedFiles[1]?.name }}</option>
+                </select>
+              </div>
+              <div class="page-order-item">
+                <span class="page-label">Page 2:</span>
+                <span class="page-value">{{ selectedFiles[page1ImageIndex === 0 ? 1 : 0]?.name }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Rotation Controls -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">🔄</span>
+              <span class="setting-title">Rotation</span>
+            </div>
+            <div class="rotation-grid">
+              <button
+                class="rotation-btn"
+                :class="{ active: rotation === 0 }"
+                @click="setRotation(0)"
+                :disabled="processing"
+                title="No rotation"
+              >
+                <span class="rotation-icon">↑</span>
+                <span class="rotation-degree">0°</span>
+              </button>
+              <button
+                class="rotation-btn"
+                :class="{ active: rotation === 90 }"
+                @click="setRotation(90)"
+                :disabled="processing"
+                title="Rotate 90° clockwise"
+              >
+                <span class="rotation-icon">→</span>
+                <span class="rotation-degree">90°</span>
+              </button>
+              <button
+                class="rotation-btn"
+                :class="{ active: rotation === 180 }"
+                @click="setRotation(180)"
+                :disabled="processing"
+                title="Rotate 180°"
+              >
+                <span class="rotation-icon">↓</span>
+                <span class="rotation-degree">180°</span>
+              </button>
+              <button
+                class="rotation-btn"
+                :class="{ active: rotation === 270 }"
+                @click="setRotation(270)"
+                :disabled="processing"
+                title="Rotate 270° clockwise"
+              >
+                <span class="rotation-icon">←</span>
+                <span class="rotation-degree">270°</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Numbering Mode Controls -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">🔢</span>
+              <span class="setting-title">Numbering Order</span>
+            </div>
+            <div class="chip-group">
+              <button
+                class="chip"
+                :class="{ active: orderingMode === 'standard' }"
+                @click="setOrderingMode('standard')"
+                :disabled="processing"
+              >
+                Standard
+              </button>
+              <button
+                class="chip"
+                :class="{ active: orderingMode === 'rtl' }"
+                @click="setOrderingMode('rtl')"
+                :disabled="processing"
+              >
+                RTL Booklet
+              </button>
+              <button
+                class="chip"
+                :class="{ active: orderingMode === 'ltr' }"
+                @click="setOrderingMode('ltr')"
+                :disabled="processing"
+              >
+                LTR Booklet
+              </button>
+            </div>
+          </div>
+
+          <!-- Page Size Controls -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">📏</span>
+              <span class="setting-title">Output Page Size</span>
+            </div>
+            <div class="chip-group">
+              <button
+                class="chip"
+                :class="{ active: pageSize === 'a7' }"
+                @click="setPageSize('a7')"
+                :disabled="processing"
+              >
+                A7 (74×105mm)
+              </button>
+              <button
+                class="chip"
+                :class="{ active: pageSize === 'a6' }"
+                @click="setPageSize('a6')"
+                :disabled="processing"
+              >
+                A6 (105×148mm)
+              </button>
+              <button
+                class="chip"
+                :class="{ active: pageSize === 'a5' }"
+                @click="setPageSize('a5')"
+                :disabled="processing"
+              >
+                A5 (148×210mm)
+              </button>
+              <button
+                class="chip"
+                :class="{ active: pageSize === 'a4' }"
+                @click="setPageSize('a4')"
+                :disabled="processing"
+              >
+                A4 (210×297mm)
+              </button>
+            </div>
+            <div class="setting-description">
+              Each split piece will be sized to the selected page size (bleeds included)
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Source Preview (Single File Mode Only) -->
-      <div v-if="previewUrl && previewUrl !== 'multiple-files'" class="source-preview-section">
+      <div v-if="previewUrl && previewUrl !== 'dual-files' && previewUrl !== 'multiple-files'" class="source-preview-section">
         <div class="preview-header">
           <h3>Preview:</h3>
           <div v-if="pdfPageCount > 1" class="page-info">
@@ -73,7 +252,7 @@
         <!-- Modern Settings Controls -->
         <div class="settings-panel">
           <!-- Page Position Switch (Single File Mode) -->
-          <div v-if="selectedFiles.length === 1" class="setting-card">
+          <div class="setting-card">
             <div class="setting-header">
               <span class="setting-icon">📄</span>
               <span class="setting-title">Page Position</span>
@@ -90,27 +269,6 @@
                 <span class="slider"></span>
               </label>
               <span class="switch-label" :class="{ active: selectedPage === 2 }">Second Page</span>
-            </div>
-          </div>
-
-          <!-- Page Order Selector (Two Files Mode) -->
-          <div v-if="selectedFiles.length === 2" class="setting-card">
-            <div class="setting-header">
-              <span class="setting-icon">📄</span>
-              <span class="setting-title">Page Order</span>
-            </div>
-            <div class="page-order-selector">
-              <div class="page-order-item">
-                <span class="page-label">Page 1:</span>
-                <select v-model="page1ImageIndex" :disabled="processing" class="page-select">
-                  <option :value="0">{{ selectedFiles[0]?.name }}</option>
-                  <option :value="1">{{ selectedFiles[1]?.name }}</option>
-                </select>
-              </div>
-              <div class="page-order-item">
-                <span class="page-label">Page 2:</span>
-                <span class="page-value">{{ selectedFiles[page1ImageIndex === 0 ? 1 : 0]?.name }}</span>
-              </div>
             </div>
           </div>
 
@@ -297,6 +455,7 @@ import JSZip from 'jszip'
 const selectedFiles = ref([]) // Array to hold 1 or 2 files
 const fileInput = ref(null)
 const previewCanvas = ref(null)
+const previewCanvas2 = ref(null) // Second canvas for dual-file mode
 const isDragging = ref(false)
 const processing = ref(false)
 const progress = ref(0)
@@ -306,6 +465,7 @@ const statusType = ref('info')
 const previewUrl = ref('')
 const rotation = ref(0)
 const sourceCanvas = ref(null)
+const sourceCanvas2 = ref(null) // Second source canvas for dual-file mode
 const selectedPage = ref(1) // 1 for first page, 2 for second page (used in single-file mode)
 const pdfPageCount = ref(0)
 // Store PDF document in plain variable to avoid Vue reactivity breaking PDF.js private fields
@@ -348,12 +508,12 @@ const handleFileSelect = (event) => {
     pageSize.value = 'a7'
     page1ImageIndex.value = 0
 
-    // Load preview for the first file
+    // Load preview
     if (files.length === 1) {
       loadPreview(files[0])
-    } else {
-      // For 2 files, just set a flag that files are ready
-      previewUrl.value = 'multiple-files'
+    } else if (files.length === 2) {
+      // For 2 files, load both previews
+      loadDualPreviews(files[0], files[1])
     }
   }
 }
@@ -373,12 +533,12 @@ const handleDrop = (event) => {
     orderingMode.value = 'rtl'
     page1ImageIndex.value = 0
 
-    // Load preview for the first file
+    // Load preview
     if (files.length === 1) {
       loadPreview(files[0])
-    } else {
-      // For 2 files, just set a flag that files are ready
-      previewUrl.value = 'multiple-files'
+    } else if (files.length === 2) {
+      // For 2 files, load both previews
+      loadDualPreviews(files[0], files[1])
     }
   }
 }
@@ -391,6 +551,7 @@ const reset = () => {
   previewUrl.value = ''
   rotation.value = 0
   sourceCanvas.value = null
+  sourceCanvas2.value = null
   selectedPage.value = 1
   pdfPageCount.value = 0
   pdfDocument = null
@@ -406,7 +567,11 @@ const reset = () => {
 const setRotation = (degrees) => {
   rotation.value = degrees
   // Redraw preview to update grid overlay
-  if (sourceCanvas.value) {
+  if (selectedFiles.value.length === 2 && sourceCanvas.value && sourceCanvas2.value) {
+    // Dual-file mode: redraw both previews
+    drawDualPreviews()
+  } else if (sourceCanvas.value) {
+    // Single-file mode: redraw single preview
     drawPreview(sourceCanvas.value)
   }
 }
@@ -415,7 +580,11 @@ const setRotation = (degrees) => {
 const setOrderingMode = (mode) => {
   orderingMode.value = mode
   // Redraw preview to update grid overlay numbers
-  if (sourceCanvas.value) {
+  if (selectedFiles.value.length === 2 && sourceCanvas.value && sourceCanvas2.value) {
+    // Dual-file mode: redraw both previews
+    drawDualPreviews()
+  } else if (sourceCanvas.value) {
+    // Single-file mode: redraw single preview
     drawPreview(sourceCanvas.value)
   }
 }
@@ -579,58 +748,131 @@ const loadPdfPreview = async (file) => {
   }
 }
 
-const drawPreview = (canvas) => {
-  console.log('drawPreview: start')
-  // Set previewUrl first so the canvas element gets rendered
-  previewUrl.value = 'loaded'
+// Load and display previews for both files in dual-file mode
+const loadDualPreviews = async (file1, file2) => {
+  try {
+    // Load both files
+    const canvas1 = await loadFileToCanvas(file1)
+    const canvas2 = await loadFileToCanvas(file2)
 
-  console.log('drawPreview: before nextTick')
-  // Wait for Vue to render the canvas element
-  nextTick().then(() => {
-    console.log('drawPreview: inside nextTick callback')
-    // Now safely access the ref
-    const previewCanvasEl = previewCanvas.value
+    sourceCanvas.value = canvas1
+    sourceCanvas2.value = canvas2
 
-    if (!previewCanvasEl) {
-      console.error('Preview canvas ref not available')
-      return
+    // Draw both previews
+    drawDualPreviews()
+  } catch (error) {
+    console.error('Error loading dual previews:', error)
+    statusMessage.value = `Error loading previews: ${error.message}`
+    statusType.value = 'error'
+  }
+}
+
+// Load a single file (image or PDF) to canvas
+const loadFileToCanvas = (file) => {
+  return new Promise((resolve, reject) => {
+    const isPdf = file.type === 'application/pdf'
+
+    if (isPdf) {
+      // Load PDF
+      file.arrayBuffer().then(arrayBuffer => {
+        return pdfjsLib.getDocument({ data: arrayBuffer }).promise
+      }).then(pdf => {
+        return pdf.getPage(1) // Always load first page
+      }).then(page => {
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+
+        const viewport = page.getViewport({ scale: 4.2 })
+        canvas.width = viewport.width
+        canvas.height = viewport.height
+
+        return page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise.then(() => canvas)
+      }).then(resolve).catch(reject)
+    } else {
+      // Load image
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0)
+          resolve(canvas)
+        }
+        img.onerror = () => reject(new Error(`Failed to load image: ${file.name}`))
+        img.src = e.target.result
+      }
+      reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`))
+      reader.readAsDataURL(file)
     }
-
-    // Apply rotation to the canvas before displaying
-    const currentRotation = rotation.value
-    const rotatedCanvas = applyRotation(canvas, currentRotation)
-
-    const maxWidth = 600
-    const maxHeight = 800
-    let width = rotatedCanvas.width
-    let height = rotatedCanvas.height
-
-    // Scale down if needed
-    const scale = Math.min(maxWidth / width, maxHeight / height, 1)
-    width = width * scale
-    height = height * scale
-
-    previewCanvasEl.width = width
-    previewCanvasEl.height = height
-
-    const ctx = previewCanvasEl.getContext('2d')
-    ctx.drawImage(rotatedCanvas, 0, 0, width, height)
-
-    // Draw grid lines and numbers overlay
-    // Use the rotated canvas dimensions for the overlay
-    drawGridOverlay(ctx, width, height, rotatedCanvas.width, rotatedCanvas.height)
-
-    console.log('drawPreview: done')
   })
 }
 
-const drawGridOverlay = (ctx, displayWidth, displayHeight, originalWidth, originalHeight) => {
+// Draw both previews with grid overlays
+const drawDualPreviews = () => {
+  console.log('drawDualPreviews: start')
+  previewUrl.value = 'dual-files'
+
+  nextTick().then(() => {
+    const previewCanvasEl1 = previewCanvas.value
+    const previewCanvasEl2 = previewCanvas2.value
+
+    if (!previewCanvasEl1 || !previewCanvasEl2 || !sourceCanvas.value || !sourceCanvas2.value) {
+      console.error('Preview canvases not available')
+      return
+    }
+
+    const currentRotation = rotation.value
+    const currentOrderingMode = orderingMode.value
+    const currentPage1Index = page1ImageIndex.value
+
+    // Determine which canvas is page 1 and which is page 2
+    const page1Canvas = currentPage1Index === 0 ? sourceCanvas.value : sourceCanvas2.value
+    const page2Canvas = currentPage1Index === 0 ? sourceCanvas2.value : sourceCanvas.value
+
+    // Apply rotation and draw page 1
+    const rotatedCanvas1 = applyRotation(page1Canvas, currentRotation)
+    drawSinglePreviewToCanvas(rotatedCanvas1, previewCanvasEl1, true, currentOrderingMode)
+
+    // Apply rotation and draw page 2
+    const rotatedCanvas2 = applyRotation(page2Canvas, currentRotation)
+    drawSinglePreviewToCanvas(rotatedCanvas2, previewCanvasEl2, false, currentOrderingMode)
+
+    console.log('drawDualPreviews: done')
+  })
+}
+
+// Draw a single preview to a specific canvas element
+const drawSinglePreviewToCanvas = (sourceCanvas, targetCanvasEl, isFirstPage, orderingMode) => {
+  const maxWidth = 500
+  const maxHeight = 700
+  let width = sourceCanvas.width
+  let height = sourceCanvas.height
+
+  // Scale down if needed
+  const scale = Math.min(maxWidth / width, maxHeight / height, 1)
+  width = width * scale
+  height = height * scale
+
+  targetCanvasEl.width = width
+  targetCanvasEl.height = height
+
+  const ctx = targetCanvasEl.getContext('2d')
+  ctx.drawImage(sourceCanvas, 0, 0, width, height)
+
+  // Draw grid lines and numbers overlay
+  drawGridOverlay(ctx, width, height, sourceCanvas.width, sourceCanvas.height, isFirstPage, orderingMode)
+}
+
+// Update drawGridOverlay signature to accept isFirstPage and orderingMode
+const drawGridOverlay = (ctx, displayWidth, displayHeight, originalWidth, originalHeight, isFirstPage = true, mode = 'rtl') => {
   // The canvas is already rotated, so determine grid based on current dimensions
   const isPortrait = originalHeight > originalWidth
-
-  // Get current values
-  const currentOrderingMode = orderingMode.value
-  const isFirstPage = selectedPage.value === 1
 
   // Calculate grid based on current orientation (after rotation)
   let cols, rows
@@ -673,8 +915,7 @@ const drawGridOverlay = (ctx, displayWidth, displayHeight, originalWidth, origin
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const position = row * cols + col
-      // Use isPortrait since canvas is already rotated
-      const pageNumber = getPageNumber(position, isPortrait, isFirstPage, currentOrderingMode)
+      const pageNumber = getPageNumber(position, isPortrait, isFirstPage, mode)
 
       const x = col * cellWidth + cellWidth / 2
       const y = row * cellHeight + cellHeight / 2
@@ -690,6 +931,53 @@ const drawGridOverlay = (ctx, displayWidth, displayHeight, originalWidth, origin
       ctx.fillText(pageNumber.toString(), x, y)
     }
   }
+}
+
+const drawPreview = (canvas) => {
+  console.log('drawPreview: start')
+  // Set previewUrl first so the canvas element gets rendered
+  previewUrl.value = 'loaded'
+
+  console.log('drawPreview: before nextTick')
+  // Wait for Vue to render the canvas element
+  nextTick().then(() => {
+    console.log('drawPreview: inside nextTick callback')
+    // Now safely access the ref
+    const previewCanvasEl = previewCanvas.value
+
+    if (!previewCanvasEl) {
+      console.error('Preview canvas ref not available')
+      return
+    }
+
+    // Apply rotation to the canvas before displaying
+    const currentRotation = rotation.value
+    const rotatedCanvas = applyRotation(canvas, currentRotation)
+
+    const maxWidth = 600
+    const maxHeight = 800
+    let width = rotatedCanvas.width
+    let height = rotatedCanvas.height
+
+    // Scale down if needed
+    const scale = Math.min(maxWidth / width, maxHeight / height, 1)
+    width = width * scale
+    height = height * scale
+
+    previewCanvasEl.width = width
+    previewCanvasEl.height = height
+
+    const ctx = previewCanvasEl.getContext('2d')
+    ctx.drawImage(rotatedCanvas, 0, 0, width, height)
+
+    // Draw grid lines and numbers overlay
+    // Use the rotated canvas dimensions for the overlay
+    const currentOrderingMode = orderingMode.value
+    const isFirstPage = selectedPage.value === 1
+    drawGridOverlay(ctx, width, height, rotatedCanvas.width, rotatedCanvas.height, isFirstPage, currentOrderingMode)
+
+    console.log('drawPreview: done')
+  })
 }
 
 // Apply rotation to canvas
