@@ -54,6 +54,9 @@
             Viewing: Page {{ selectedPage }} of {{ pdfPageCount }}
           </div>
         </div>
+        <div v-if="pdfPageCount === 2" class="info-banner">
+          ℹ️ Two-page PDF detected! Clicking "Generate" will create all 16 images (8 from each page) and automatically download them as a ZIP file.
+        </div>
         <div class="preview-container">
           <canvas
             ref="previewCanvas"
@@ -176,7 +179,7 @@
           @click="processDocument"
           :disabled="processing || !previewUrl"
         >
-          {{ processing ? 'Processing...' : 'Split into A7 Images' }}
+          {{ processing ? 'Processing...' : (pdfPageCount === 2 ? 'Generate All 16 Images & Download' : 'Split into A7 Images') }}
         </button>
       </div>
 
@@ -621,11 +624,28 @@ const processDocument = () => {
   console.log('processDocument: extracting file')
   const file = selectedFile.value
   const isPdf = file.type === 'application/pdf'
+  const isTwoPagePdf = isPdf && pdfPageCount.value === 2
 
   console.log('processDocument: setting progress to 20')
   progress.value = 20
 
-  const processPromise = isPdf ? processPdf(file) : processImage()
+  let processPromise
+
+  // For two-page PDFs, process both pages and combine results
+  if (isTwoPagePdf) {
+    console.log('processDocument: processing two-page PDF')
+    statusMessage.value = 'Processing both pages...'
+    processPromise = Promise.all([
+      processPdf(file, 1),
+      processPdf(file, 2)
+    ]).then(([page1Pieces, page2Pieces]) => {
+      console.log('processDocument: combining pieces from both pages')
+      return [...page1Pieces, ...page2Pieces]
+    })
+  } else {
+    // For single-page PDFs and images, process normally
+    processPromise = isPdf ? processPdf(file) : processImage()
+  }
 
   processPromise.then(pieces => {
     console.log('processDocument: got', pieces.length, 'pieces')
@@ -639,6 +659,14 @@ const processDocument = () => {
     statusMessage.value = `Successfully generated ${pieces.length} A7 images!`
     statusType.value = 'success'
     console.log('processDocument: SUCCESS')
+
+    // For two-page PDFs, automatically trigger download
+    if (isTwoPagePdf) {
+      console.log('processDocument: auto-downloading for two-page PDF')
+      setTimeout(() => {
+        downloadAllAsZip()
+      }, 500)
+    }
   }).catch(error => {
     console.error('processDocument: ERROR', error)
     statusMessage.value = `Error: ${error.message}`
@@ -649,10 +677,10 @@ const processDocument = () => {
   })
 }
 
-const processPdf = (file) => {
-  console.log('processPdf: START')
+const processPdf = (file, pageNum = null) => {
+  console.log('processPdf: START, pageNum=', pageNum)
   // Extract all values at the beginning
-  const currentSelectedPage = selectedPage.value
+  const currentSelectedPage = pageNum !== null ? pageNum : selectedPage.value
   const currentRotation = rotation.value
   const currentOrderingMode = orderingMode.value
   const storedPdf = pdfDocument

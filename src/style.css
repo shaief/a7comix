@@ -521,3 +521,15 @@ input:disabled + .slider {
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+.info-banner {
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  color: #0c5460;
+  padding: 15px 20px;
+  border-radius: 8px;
+  margin: 15px 0;
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: 1px solid #bee5eb;
+  box-shadow: 0 2px 8px rgba(12, 84, 96, 0.1);
+}
