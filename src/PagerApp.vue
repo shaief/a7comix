@@ -53,6 +53,51 @@
 
       <!-- Modern Settings Controls -->
       <div class="settings-panel">
+        <!-- Page Size Controls -->
+        <div class="setting-card">
+          <div class="setting-header">
+            <span class="setting-icon">📏</span>
+            <span class="setting-title">Output Page Size</span>
+          </div>
+          <div class="chip-group">
+            <button
+              class="chip"
+              :class="{ active: pageSize === 'a7' }"
+              @click="setPageSize('a7')"
+              :disabled="processing"
+            >
+              A7 (74×105mm)
+            </button>
+            <button
+              class="chip"
+              :class="{ active: pageSize === 'a6' }"
+              @click="setPageSize('a6')"
+              :disabled="processing"
+            >
+              A6 (105×148mm)
+            </button>
+            <button
+              class="chip"
+              :class="{ active: pageSize === 'a5' }"
+              @click="setPageSize('a5')"
+              :disabled="processing"
+            >
+              A5 (148×210mm)
+            </button>
+            <button
+              class="chip"
+              :class="{ active: pageSize === 'a4' }"
+              @click="setPageSize('a4')"
+              :disabled="processing"
+            >
+              A4 (210×297mm)
+            </button>
+          </div>
+          <div class="setting-description">
+            Images will be resized to fit within the selected page size (bleeds included)
+          </div>
+        </div>
+
         <!-- Booklet Mode Controls -->
         <div class="setting-card">
           <div class="setting-header">
@@ -152,6 +197,15 @@ const processedImages = ref([])
 const statusMessage = ref('')
 const statusType = ref('info')
 const bookletMode = ref('rtl') // 'none', 'rtl', 'ltr'
+const pageSize = ref('a7') // 'a7', 'a6', 'a5', 'a4'
+
+// Page size dimensions in mm (width x height for portrait orientation)
+const pageSizes = {
+  a7: { width: 74, height: 105 },
+  a6: { width: 105, height: 148 },
+  a5: { width: 148, height: 210 },
+  a4: { width: 210, height: 297 }
+}
 
 // Computed: Sort files by numeric value at end of filename
 const sortedFiles = computed(() => {
@@ -188,6 +242,7 @@ const handleFileSelect = (event) => {
     processedImages.value = []
     statusMessage.value = ''
     bookletMode.value = 'rtl'
+    pageSize.value = 'a7'
   }
 }
 
@@ -199,6 +254,7 @@ const handleDrop = (event) => {
     processedImages.value = []
     statusMessage.value = ''
     bookletMode.value = 'rtl'
+    pageSize.value = 'a7'
   }
 }
 
@@ -208,9 +264,15 @@ const reset = () => {
   statusMessage.value = ''
   progress.value = 0
   bookletMode.value = 'rtl'
+  pageSize.value = 'a7'
   if (fileInput.value) {
     fileInput.value.value = ''
   }
+}
+
+// Page size control
+const setPageSize = (size) => {
+  pageSize.value = size
 }
 
 // Booklet mode control
@@ -267,10 +329,11 @@ const processImages = async () => {
     const sorted = sortedFiles.value
     const total = sorted.length
     const currentMode = bookletMode.value
+    const currentPageSize = pageSize.value
 
     for (let i = 0; i < total; i++) {
       const file = sorted[i]
-      const processedImage = await addBleedToImage(file, i, currentMode)
+      const processedImage = await addBleedToImage(file, i, currentMode, currentPageSize)
       processedImages.value.push(processedImage)
       progress.value = Math.round(((i + 1) / total) * 100)
     }
@@ -286,7 +349,7 @@ const processImages = async () => {
   }
 }
 
-const addBleedToImage = (file, pageIndex, mode) => {
+const addBleedToImage = (file, pageIndex, mode, pageSizeKey) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
 
@@ -296,21 +359,45 @@ const addBleedToImage = (file, pageIndex, mode) => {
         // Get bleed values for this page
         const bleeds = getBleedValues(pageIndex, mode)
 
-        // Create canvas with added bleed
+        // Get target page size dimensions in mm
+        const targetSize = pageSizes[pageSizeKey]
+
+        // Convert page size from mm to pixels at 300 DPI
+        const pageWidthPx = mmToPx(targetSize.width)
+        const pageHeightPx = mmToPx(targetSize.height)
+
+        // Calculate available space for content (page size minus bleeds)
+        const contentWidth = pageWidthPx - bleeds.left - bleeds.right
+        const contentHeight = pageHeightPx - bleeds.top - bleeds.bottom
+
+        // Calculate scale factor to fit image within content area while maintaining aspect ratio
+        const scaleX = contentWidth / img.width
+        const scaleY = contentHeight / img.height
+        const scale = Math.min(scaleX, scaleY)
+
+        // Calculate scaled image dimensions
+        const scaledWidth = img.width * scale
+        const scaledHeight = img.height * scale
+
+        // Create canvas with final page size
         const canvas = document.createElement('canvas')
-        canvas.width = img.width + bleeds.left + bleeds.right
-        canvas.height = img.height + bleeds.top + bleeds.bottom
+        canvas.width = pageWidthPx
+        canvas.height = pageHeightPx
 
         const ctx = canvas.getContext('2d')
         ctx.imageSmoothingEnabled = true
         ctx.imageSmoothingQuality = 'high'
 
-        // Fill with white background (optional, could be transparent)
+        // Fill with white background
         ctx.fillStyle = 'white'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-        // Draw the original image in the center (with bleed margins)
-        ctx.drawImage(img, bleeds.left, bleeds.top)
+        // Center the scaled image within the content area
+        const x = bleeds.left + (contentWidth - scaledWidth) / 2
+        const y = bleeds.top + (contentHeight - scaledHeight) / 2
+
+        // Draw the scaled image
+        ctx.drawImage(img, x, y, scaledWidth, scaledHeight)
 
         // Convert to blob
         canvas.toBlob(
