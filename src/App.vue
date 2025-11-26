@@ -228,6 +228,26 @@
               Each split piece will be sized to the selected page size (bleeds included)
             </div>
           </div>
+
+          <!-- Output File Name Controls -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">📝</span>
+              <span class="setting-title">Output File Name</span>
+            </div>
+            <div class="file-name-input-container">
+              <input
+                type="text"
+                v-model="outputBaseName"
+                :disabled="processing"
+                placeholder="Enter base name for output files"
+                class="file-name-input"
+              >
+            </div>
+            <div class="setting-description">
+              Output files will be named: [base name]_1.jpg, [base name]_2.jpg, etc.
+            </div>
+          </div>
         </div>
       </div>
 
