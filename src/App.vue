@@ -6,11 +6,11 @@
       <a href="pager.html" class="nav-link">📖 Pager</a>
     </div>
     <h1>📄 A4 to A7 Document Splitter</h1>
-    <p class="subtitle">Upload one A4 page (portrait or landscape), select if it's your first or second page, then split it into 8 properly-sized A7 JPG images</p>
+    <p class="subtitle">Upload 1 or 2 pages (portrait or landscape), then split each into 8 properly-sized JPG images</p>
 
     <!-- Upload Area -->
     <div
-      v-if="!selectedFile"
+      v-if="selectedFiles.length === 0"
       class="upload-area"
       :class="{ dragging: isDragging }"
       @click="triggerFileInput"
@@ -20,34 +20,40 @@
     >
       <div class="upload-icon">📎</div>
       <div class="upload-text">Click to upload or drag and drop</div>
-      <div class="upload-hint">Supports JPG, PNG, PDF and other image formats</div>
+      <div class="upload-hint">Upload 1 or 2 pages (JPG, PNG, PDF)</div>
       <input
         ref="fileInput"
         type="file"
         class="file-input"
         accept="image/*,application/pdf"
+        multiple
         @change="handleFileSelect"
       >
     </div>
 
     <!-- File Info & Preview -->
-    <div v-if="selectedFile && !processedImages.length" class="file-info">
+    <div v-if="selectedFiles.length > 0 && !processedImages.length" class="file-info">
       <div class="file-header">
         <div>
-          <h3>Selected File:</h3>
-          <div class="file-name">{{ selectedFile.name }}</div>
+          <h3>Selected File{{ selectedFiles.length > 1 ? 's' : '' }}:</h3>
+          <div v-if="selectedFiles.length === 1" class="file-name">{{ selectedFiles[0].name }}</div>
+          <div v-else class="file-list">
+            <div v-for="(file, idx) in selectedFiles" :key="idx" class="file-item">
+              {{ idx + 1 }}. {{ file.name }}
+            </div>
+          </div>
         </div>
         <button
           class="btn btn-secondary btn-small"
           @click="reset"
           :disabled="processing"
         >
-          Choose Different File
+          Choose Different File{{ selectedFiles.length > 1 ? 's' : '' }}
         </button>
       </div>
 
-      <!-- Source Preview -->
-      <div v-if="previewUrl" class="source-preview-section">
+      <!-- Source Preview (Single File Mode Only) -->
+      <div v-if="previewUrl && previewUrl !== 'multiple-files'" class="source-preview-section">
         <div class="preview-header">
           <h3>Preview:</h3>
           <div v-if="pdfPageCount > 1" class="page-info">
@@ -66,8 +72,8 @@
 
         <!-- Modern Settings Controls -->
         <div class="settings-panel">
-          <!-- Page Position Switch -->
-          <div class="setting-card">
+          <!-- Page Position Switch (Single File Mode) -->
+          <div v-if="selectedFiles.length === 1" class="setting-card">
             <div class="setting-header">
               <span class="setting-icon">📄</span>
               <span class="setting-title">Page Position</span>
@@ -84,6 +90,27 @@
                 <span class="slider"></span>
               </label>
               <span class="switch-label" :class="{ active: selectedPage === 2 }">Second Page</span>
+            </div>
+          </div>
+
+          <!-- Page Order Selector (Two Files Mode) -->
+          <div v-if="selectedFiles.length === 2" class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">📄</span>
+              <span class="setting-title">Page Order</span>
+            </div>
+            <div class="page-order-selector">
+              <div class="page-order-item">
+                <span class="page-label">Page 1:</span>
+                <select v-model="page1ImageIndex" :disabled="processing" class="page-select">
+                  <option :value="0">{{ selectedFiles[0]?.name }}</option>
+                  <option :value="1">{{ selectedFiles[1]?.name }}</option>
+                </select>
+              </div>
+              <div class="page-order-item">
+                <span class="page-label">Page 2:</span>
+                <span class="page-value">{{ selectedFiles[page1ImageIndex === 0 ? 1 : 0]?.name }}</span>
+              </div>
             </div>
           </div>
 
@@ -170,6 +197,51 @@
               </button>
             </div>
           </div>
+
+          <!-- Page Size Controls -->
+          <div class="setting-card">
+            <div class="setting-header">
+              <span class="setting-icon">📏</span>
+              <span class="setting-title">Output Page Size</span>
+            </div>
+            <div class="chip-group">
+              <button
+                class="chip"
+                :class="{ active: pageSize === 'a7' }"
+                @click="setPageSize('a7')"
+                :disabled="processing"
+              >
+                A7 (74×105mm)
+              </button>
+              <button
+                class="chip"
+                :class="{ active: pageSize === 'a6' }"
+                @click="setPageSize('a6')"
+                :disabled="processing"
+              >
+                A6 (105×148mm)
+              </button>
+              <button
+                class="chip"
+                :class="{ active: pageSize === 'a5' }"
+                @click="setPageSize('a5')"
+                :disabled="processing"
+              >
+                A5 (148×210mm)
+              </button>
+              <button
+                class="chip"
+                :class="{ active: pageSize === 'a4' }"
+                @click="setPageSize('a4')"
+                :disabled="processing"
+              >
+                A4 (210×297mm)
+              </button>
+            </div>
+            <div class="setting-description">
+              Each split piece will be sized to the selected page size (bleeds included)
+            </div>
+          </div>
         </div>
       </div>
 
@@ -177,9 +249,11 @@
         <button
           class="btn btn-primary"
           @click="processDocument"
-          :disabled="processing || !previewUrl"
+          :disabled="processing || (selectedFiles.length === 1 && !previewUrl) || selectedFiles.length === 0"
         >
-          {{ processing ? 'Processing...' : (pdfPageCount === 2 ? 'Generate All 16 Images & Download' : 'Split into A7 Images') }}
+          {{ processing ? 'Processing...' :
+             (selectedFiles.length === 2 ? 'Generate All 16 Images & Download' :
+              (pdfPageCount === 2 ? 'Generate All 16 Images & Download' : 'Split into Images')) }}
         </button>
       </div>
 
@@ -220,7 +294,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import JSZip from 'jszip'
 
 // State
-const selectedFile = ref(null)
+const selectedFiles = ref([]) // Array to hold 1 or 2 files
 const fileInput = ref(null)
 const previewCanvas = ref(null)
 const isDragging = ref(false)
@@ -232,11 +306,21 @@ const statusType = ref('info')
 const previewUrl = ref('')
 const rotation = ref(0)
 const sourceCanvas = ref(null)
-const selectedPage = ref(1) // 1 for first page, 2 for second page
+const selectedPage = ref(1) // 1 for first page, 2 for second page (used in single-file mode)
 const pdfPageCount = ref(0)
 // Store PDF document in plain variable to avoid Vue reactivity breaking PDF.js private fields
 let pdfDocument = null
 const orderingMode = ref('rtl') // 'standard', 'rtl', 'ltr'
+const pageSize = ref('a7') // 'a7', 'a6', 'a5', 'a4'
+const page1ImageIndex = ref(0) // Which file is page 1 when 2 files are uploaded (0 or 1)
+
+// Page size dimensions in mm (width x height for portrait orientation)
+const pageSizes = {
+  a7: { width: 74, height: 105 },
+  a6: { width: 105, height: 148 },
+  a5: { width: 148, height: 210 },
+  a4: { width: 210, height: 297 }
+}
 
 // Initialize PDF.js worker
 onMounted(() => {
@@ -251,9 +335,9 @@ const triggerFileInput = () => {
 }
 
 const handleFileSelect = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    selectedFile.value = file
+  const files = Array.from(event.target.files).slice(0, 2) // Limit to 2 files
+  if (files.length > 0) {
+    selectedFiles.value = files
     processedImages.value = []
     statusMessage.value = ''
     rotation.value = 0
@@ -261,28 +345,46 @@ const handleFileSelect = (event) => {
     pdfPageCount.value = 0
     pdfDocument = null
     orderingMode.value = 'rtl'
-    loadPreview(file)
+    pageSize.value = 'a7'
+    page1ImageIndex.value = 0
+
+    // Load preview for the first file
+    if (files.length === 1) {
+      loadPreview(files[0])
+    } else {
+      // For 2 files, just set a flag that files are ready
+      previewUrl.value = 'multiple-files'
+    }
   }
 }
 
 const handleDrop = (event) => {
   isDragging.value = false
-  const file = event.dataTransfer.files[0]
-  if (file) {
-    selectedFile.value = file
+  const files = Array.from(event.dataTransfer.files).slice(0, 2) // Limit to 2 files
+  if (files.length > 0) {
+    selectedFiles.value = files
     processedImages.value = []
     statusMessage.value = ''
     rotation.value = 0
     selectedPage.value = 1
     pdfPageCount.value = 0
     pdfDocument = null
+    pageSize.value = 'a7'
     orderingMode.value = 'rtl'
-    loadPreview(file)
+    page1ImageIndex.value = 0
+
+    // Load preview for the first file
+    if (files.length === 1) {
+      loadPreview(files[0])
+    } else {
+      // For 2 files, just set a flag that files are ready
+      previewUrl.value = 'multiple-files'
+    }
   }
 }
 
 const reset = () => {
-  selectedFile.value = null
+  selectedFiles.value = []
   processedImages.value = []
   statusMessage.value = ''
   progress.value = 0
@@ -293,6 +395,8 @@ const reset = () => {
   pdfPageCount.value = 0
   pdfDocument = null
   orderingMode.value = 'rtl'
+  pageSize.value = 'a7'
+  page1ImageIndex.value = 0
   if (fileInput.value) {
     fileInput.value.value = ''
   }
@@ -314,6 +418,11 @@ const setOrderingMode = (mode) => {
   if (sourceCanvas.value) {
     drawPreview(sourceCanvas.value)
   }
+}
+
+// Page size control
+const setPageSize = (size) => {
+  pageSize.value = size
 }
 
 // Page position control
@@ -612,7 +721,13 @@ const applyRotation = (sourceCanvas, rotationDegrees) => {
 // Image processing
 const processDocument = () => {
   console.log('processDocument: START')
-  if (!selectedFile.value || !sourceCanvas.value) return
+  if (selectedFiles.value.length === 0) return
+
+  // Check if in dual-file mode (2 files uploaded)
+  const isDualFileMode = selectedFiles.value.length === 2
+
+  // In single file mode, require preview to be loaded
+  if (!isDualFileMode && !sourceCanvas.value) return
 
   console.log('processDocument: setting initial state')
   processing.value = true
@@ -621,30 +736,51 @@ const processDocument = () => {
   statusMessage.value = 'Processing document...'
   statusType.value = 'info'
 
-  console.log('processDocument: extracting file')
-  const file = selectedFile.value
-  const isPdf = file.type === 'application/pdf'
-  const isTwoPagePdf = isPdf && pdfPageCount.value === 2
-
-  console.log('processDocument: setting progress to 20')
-  progress.value = 20
-
   let processPromise
 
-  // For two-page PDFs, process both pages and combine results
-  if (isTwoPagePdf) {
-    console.log('processDocument: processing two-page PDF')
-    statusMessage.value = 'Processing both pages...'
+  if (isDualFileMode) {
+    // Process two separate files as page 1 and page 2
+    console.log('processDocument: processing two files')
+    statusMessage.value = 'Processing both files...'
+
+    const currentPage1Index = page1ImageIndex.value
+    const file1 = selectedFiles.value[currentPage1Index]
+    const file2 = selectedFiles.value[currentPage1Index === 0 ? 1 : 0]
+
+    progress.value = 20
+
     processPromise = Promise.all([
-      processPdf(file, 1),
-      processPdf(file, 2)
+      processFileAsPage(file1, 1),
+      processFileAsPage(file2, 2)
     ]).then(([page1Pieces, page2Pieces]) => {
-      console.log('processDocument: combining pieces from both pages')
+      console.log('processDocument: combining pieces from both files')
       return [...page1Pieces, ...page2Pieces]
     })
   } else {
-    // For single-page PDFs and images, process normally
-    processPromise = isPdf ? processPdf(file) : processImage()
+    // Single file mode - existing logic
+    console.log('processDocument: extracting file')
+    const file = selectedFiles.value[0]
+    const isPdf = file.type === 'application/pdf'
+    const isTwoPagePdf = isPdf && pdfPageCount.value === 2
+
+    console.log('processDocument: setting progress to 20')
+    progress.value = 20
+
+    // For two-page PDFs, process both pages and combine results
+    if (isTwoPagePdf) {
+      console.log('processDocument: processing two-page PDF')
+      statusMessage.value = 'Processing both pages...'
+      processPromise = Promise.all([
+        processPdf(file, 1),
+        processPdf(file, 2)
+      ]).then(([page1Pieces, page2Pieces]) => {
+        console.log('processDocument: combining pieces from both pages')
+        return [...page1Pieces, ...page2Pieces]
+      })
+    } else {
+      // For single-page PDFs and images, process normally
+      processPromise = isPdf ? processPdf(file) : processImage()
+    }
   }
 
   processPromise.then(pieces => {
@@ -656,13 +792,13 @@ const processDocument = () => {
     console.log('processDocument: setting progress to 100')
     progress.value = 100
     console.log('processDocument: setting success message')
-    statusMessage.value = `Successfully generated ${pieces.length} A7 images!`
+    statusMessage.value = `Successfully generated ${pieces.length} images!`
     statusType.value = 'success'
     console.log('processDocument: SUCCESS')
 
-    // For two-page PDFs, automatically trigger download
-    if (isTwoPagePdf) {
-      console.log('processDocument: auto-downloading for two-page PDF')
+    // Auto-download for two-page PDFs or dual-file mode
+    if (isDualFileMode || (selectedFiles.value[0]?.type === 'application/pdf' && pdfPageCount.value === 2)) {
+      console.log('processDocument: auto-downloading')
       setTimeout(() => {
         downloadAllAsZip()
       }, 500)
@@ -677,12 +813,71 @@ const processDocument = () => {
   })
 }
 
+// Process a single file as a specific page number
+const processFileAsPage = (file, pageNumber) => {
+  console.log('processFileAsPage: START, pageNumber=', pageNumber)
+  const currentRotation = rotation.value
+  const currentOrderingMode = orderingMode.value
+  const currentPageSize = pageSize.value
+  const baseName = file.name.replace(/\.\w+$/, '')
+  const isPdf = file.type === 'application/pdf'
+
+  if (isPdf) {
+    // Load and process PDF
+    return file.arrayBuffer().then(arrayBuffer => {
+      return pdfjsLib.getDocument({ data: arrayBuffer }).promise
+    }).then(pdf => {
+      return pdf.getPage(1) // Always use first page of each PDF
+    }).then(page => {
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+
+      const viewport = page.getViewport({ scale: 4.2 })
+      canvas.width = viewport.width
+      canvas.height = viewport.height
+
+      return page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise.then(() => canvas)
+    }).then(canvas => {
+      const rotatedCanvas = applyRotation(canvas, currentRotation)
+      const isFirstPage = pageNumber === 1
+      return splitIntoA7(rotatedCanvas, baseName, pageNumber, isFirstPage, currentOrderingMode, currentPageSize)
+    })
+  } else {
+    // Load and process image
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.width
+          canvas.height = img.height
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0)
+
+          const rotatedCanvas = applyRotation(canvas, currentRotation)
+          const isFirstPage = pageNumber === 1
+          resolve(splitIntoA7(rotatedCanvas, baseName, pageNumber, isFirstPage, currentOrderingMode, currentPageSize))
+        }
+        img.onerror = () => reject(new Error(`Failed to load image: ${file.name}`))
+        img.src = e.target.result
+      }
+      reader.onerror = () => reject(new Error(`Failed to read file: ${file.name}`))
+      reader.readAsDataURL(file)
+    })
+  }
+}
+
 const processPdf = (file, pageNum = null) => {
   console.log('processPdf: START, pageNum=', pageNum)
   // Extract all values at the beginning
   const currentSelectedPage = pageNum !== null ? pageNum : selectedPage.value
   const currentRotation = rotation.value
   const currentOrderingMode = orderingMode.value
+  const currentPageSize = pageSize.value
   const storedPdf = pdfDocument
   const baseName = file.name.replace(/\.\w+$/, '')
 
@@ -721,9 +916,9 @@ const processPdf = (file, pageNum = null) => {
     const isFirstPage = currentSelectedPage === 1
     const startIndex = isFirstPage ? 1 : 9
 
-    console.log('processPdf: splitting into A7')
-    // Split this page into A7 pieces
-    return splitIntoA7(rotatedCanvas, baseName, startIndex, isFirstPage, currentOrderingMode)
+    console.log('processPdf: splitting into pieces')
+    // Split this page into pieces
+    return splitIntoA7(rotatedCanvas, baseName, startIndex, isFirstPage, currentOrderingMode, currentPageSize)
   }).then(pieces => {
     console.log('processPdf: done, returning pieces')
     return pieces
@@ -736,8 +931,9 @@ const processImage = () => {
   const currentSelectedPage = selectedPage.value
   const currentRotation = rotation.value
   const currentOrderingMode = orderingMode.value
+  const currentPageSize = pageSize.value
   const currentSourceCanvas = sourceCanvas.value
-  const fileName = selectedFile.value.name
+  const fileName = selectedFiles.value[0].name
 
   // Use the already loaded source canvas
   const baseName = fileName.replace(/\.\w+$/, '')
@@ -750,7 +946,7 @@ const processImage = () => {
   const startIndex = isFirstPage ? 1 : 9
 
   console.log('processImage: calling splitIntoA7')
-  return splitIntoA7(rotatedCanvas, baseName, startIndex, isFirstPage, currentOrderingMode).then(pieces => {
+  return splitIntoA7(rotatedCanvas, baseName, startIndex, isFirstPage, currentOrderingMode, currentPageSize).then(pieces => {
     console.log('processImage: done, returning pieces')
     return pieces
   })
@@ -801,7 +997,13 @@ const getPageNumber = (position, isPortrait, isFirstPage, mode) => {
   return isFirstPage ? position + 1 : position + 9
 }
 
-const splitIntoA7 = async (canvas, baseName, startIndex, isFirstPage, currentOrderingMode) => {
+// Convert mm to pixels at 300 DPI
+const mmToPx = (mm) => {
+  const dpi = 300
+  return Math.round((mm / 25.4) * dpi)
+}
+
+const splitIntoA7 = async (canvas, baseName, startIndex, isFirstPage, currentOrderingMode, pageSizeKey) => {
   console.log('splitIntoA7: START')
   const pieces = []
   const width = canvas.width
@@ -812,96 +1014,90 @@ const splitIntoA7 = async (canvas, baseName, startIndex, isFirstPage, currentOrd
   const isPortrait = height > width
   console.log('splitIntoA7: isPortrait=', isPortrait)
 
-  // A4 to A7 aspect ratio: A7 is 74mm × 105mm (ratio ≈ 0.7048)
-  // For A4 portrait (210×297): split into 2 cols × 4 rows (A7 pieces are landscape 105×74)
-  // For A4 landscape (297×210): split into 4 cols × 2 rows (A7 pieces are portrait 74×105)
-  let cols, rows, pieceWidth, pieceHeight
-
+  // Determine grid layout based on orientation
+  let cols, rows
   if (isPortrait) {
-    // Portrait A4: 2 columns × 4 rows
     cols = 2
     rows = 4
-    pieceWidth = width / cols
-    pieceHeight = height / rows
-
-    // A7 landscape ratio check (width should be larger than height)
-    // Adjust to maintain proper A7 landscape ratio (105:74 = 1.419)
-    const targetRatio = 105 / 74  // A7 landscape
-    const currentRatio = pieceWidth / pieceHeight
-
-    if (Math.abs(currentRatio - targetRatio) > 0.1) {
-      // Adjust dimensions to match A7 ratio better
-      const avgSize = (pieceWidth + pieceHeight) / 2
-      pieceWidth = avgSize * targetRatio / (1 + targetRatio)
-      pieceHeight = avgSize / (1 + targetRatio)
-      pieceWidth = width / cols
-      pieceHeight = pieceWidth / targetRatio
-    }
   } else {
-    // Landscape A4: 4 columns × 2 rows
     cols = 4
     rows = 2
-    pieceWidth = width / cols
-    pieceHeight = height / rows
-
-    // A7 portrait ratio check (height should be larger than width)
-    // Adjust to maintain proper A7 portrait ratio (105:74 = 1.419)
-    const targetRatio = 105 / 74  // height/width for portrait
-    const currentRatio = pieceHeight / pieceWidth
-
-    if (Math.abs(currentRatio - targetRatio) > 0.1) {
-      // Adjust dimensions to match A7 ratio better
-      pieceWidth = width / cols
-      pieceHeight = pieceWidth * targetRatio
-    }
   }
 
-  // Note: Status message is set by the calling function
+  // Calculate dimensions of each piece from source
+  const pieceWidth = width / cols
+  const pieceHeight = height / rows
+
+  // Get target page size dimensions in mm and convert to pixels at 300 DPI
+  const targetSize = pageSizes[pageSizeKey]
+  const pageWidthPx = mmToPx(targetSize.width)
+  const pageHeightPx = mmToPx(targetSize.height)
+
+  // Fixed bleeds: 3mm on all sides
+  const bleed = mmToPx(3)
+
+  // Calculate available space for content (page size minus bleeds)
+  const contentWidth = pageWidthPx - (bleed * 2)
+  const contentHeight = pageHeightPx - (bleed * 2)
 
   console.log('splitIntoA7: starting loop, rows=', rows, 'cols=', cols)
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       console.log('splitIntoA7: processing piece', row, col)
+
+      // Extract piece from source canvas
       const pieceCanvas = document.createElement('canvas')
+      pieceCanvas.width = pieceWidth
+      pieceCanvas.height = pieceHeight
+      const pieceCtx = pieceCanvas.getContext('2d')
+      pieceCtx.imageSmoothingEnabled = true
+      pieceCtx.imageSmoothingQuality = 'high'
 
-      // Calculate actual dimensions to extract
-      const srcX = col * (width / cols)
-      const srcY = row * (height / rows)
-      const srcWidth = width / cols
-      const srcHeight = height / rows
+      const srcX = col * pieceWidth
+      const srcY = row * pieceHeight
 
-      // Set canvas to A7 proportions
-      pieceCanvas.width = Math.round(srcWidth)
-      pieceCanvas.height = Math.round(srcHeight)
-
-      const ctx = pieceCanvas.getContext('2d')
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
-
-      // Extract piece from original canvas
-      ctx.drawImage(
+      pieceCtx.drawImage(
         canvas,
-        srcX, // source x
-        srcY, // source y
-        srcWidth, // source width
-        srcHeight, // source height
-        0, // dest x
-        0, // dest y
-        pieceCanvas.width, // dest width
-        pieceCanvas.height // dest height
+        srcX, srcY, pieceWidth, pieceHeight,
+        0, 0, pieceWidth, pieceHeight
       )
 
-      console.log('splitIntoA7: before toBlob/toDataURL')
-      // Convert to JPG with high quality
-      const dataUrl = pieceCanvas.toBlob ?
-        await new Promise(resolve => {
-          pieceCanvas.toBlob(blob => {
-            resolve(URL.createObjectURL(blob))
-          }, 'image/jpeg', 0.95)
-        }) :
-        pieceCanvas.toDataURL('image/jpeg', 0.95)
+      // Create final canvas with page size
+      const finalCanvas = document.createElement('canvas')
+      finalCanvas.width = pageWidthPx
+      finalCanvas.height = pageHeightPx
+      const finalCtx = finalCanvas.getContext('2d')
+      finalCtx.imageSmoothingEnabled = true
+      finalCtx.imageSmoothingQuality = 'high'
 
-      console.log('splitIntoA7: after toBlob/toDataURL')
+      // Fill with white background
+      finalCtx.fillStyle = 'white'
+      finalCtx.fillRect(0, 0, finalCanvas.width, finalCanvas.height)
+
+      // Calculate scale factor to fit piece within content area
+      const scaleX = contentWidth / pieceWidth
+      const scaleY = contentHeight / pieceHeight
+      const scale = Math.min(scaleX, scaleY)
+
+      // Calculate scaled dimensions
+      const scaledWidth = pieceWidth * scale
+      const scaledHeight = pieceHeight * scale
+
+      // Center the scaled piece within the content area (with bleeds)
+      const x = bleed + (contentWidth - scaledWidth) / 2
+      const y = bleed + (contentHeight - scaledHeight) / 2
+
+      // Draw the scaled piece
+      finalCtx.drawImage(pieceCanvas, x, y, scaledWidth, scaledHeight)
+
+      console.log('splitIntoA7: before toBlob')
+      // Convert to blob
+      const blob = await new Promise(resolve => {
+        finalCanvas.toBlob(resolve, 'image/jpeg', 0.95)
+      })
+      const dataUrl = URL.createObjectURL(blob)
+
+      console.log('splitIntoA7: after toBlob')
       // Calculate position in the grid (0-7)
       const position = row * cols + col
       // Get the page number based on ordering mode
@@ -911,7 +1107,7 @@ const splitIntoA7 = async (canvas, baseName, startIndex, isFirstPage, currentOrd
       pieces.push({
         filename: `${baseName}_${pageNumber}.jpg`,
         dataUrl: dataUrl,
-        canvas: pieceCanvas
+        canvas: finalCanvas
       })
     }
   }
@@ -952,8 +1148,8 @@ const downloadAllAsZip = async () => {
     link.href = url
 
     // Use original filename (without extension) + .zip
-    const originalName = selectedFile.value.name.replace(/\.\w+$/, '')
-    link.download = `${originalName}_a7_images.zip`
+    const originalName = selectedFiles.value[0].name.replace(/\.\w+$/, '')
+    link.download = `${originalName}_images.zip`
 
     document.body.appendChild(link)
     link.click()

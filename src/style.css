@@ -533,3 +533,72 @@ input:disabled + .slider {
   border: 1px solid #bee5eb;
   box-shadow: 0 2px 8px rgba(12, 84, 96, 0.1);
 }
+
+.setting-description {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #666;
+  text-align: center;
+  padding: 0.5rem;
+  background: rgba(102, 126, 234, 0.05);
+  border-radius: 6px;
+}
+
+/* File list styles */
+.file-list {
+  max-height: 150px;
+  overflow-y: auto;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+}
+
+.file-item {
+  padding: 0.25rem 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* Page order selector styles */
+.page-order-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem;
+}
+
+.page-order-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 6px;
+}
+
+.page-label {
+  font-weight: 600;
+  color: #333;
+  min-width: 60px;
+}
+
+.page-select {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
+}
+
+.page-select:hover {
+  border-color: #667eea;
+}
+
+.page-value {
+  flex: 1;
+  color: #666;
+  font-size: 0.9rem;
+}
