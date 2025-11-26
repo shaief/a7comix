@@ -61,7 +61,7 @@
           ℹ️ Two files detected! Clicking "Generate" will create all 16 images (8 from each file) and automatically download them as a ZIP file.
         </div>
         <div class="dual-preview-container">
-          <!-- Page 1 Preview (always on top) -->
+          <!-- Page 1 Preview (left/top) -->
           <div class="preview-item">
             <div class="preview-label">Page 1: {{ selectedFiles[page1ImageIndex]?.name }}</div>
             <canvas
@@ -69,7 +69,7 @@
               class="source-preview-canvas"
             ></canvas>
           </div>
-          <!-- Page 2 Preview (always on bottom) -->
+          <!-- Page 2 Preview (right/bottom) -->
           <div class="preview-item">
             <div class="preview-label">Page 2: {{ selectedFiles[page1ImageIndex === 0 ? 1 : 0]?.name }}</div>
             <canvas

@@ -642,6 +642,18 @@ input:disabled + .slider {
   margin-top: 20px;
 }
 
+/* Side by side on wider screens */
+@media (min-width: 1200px) {
+  .dual-preview-container {
+    flex-direction: row;
+    gap: 20px;
+  }
+
+  .dual-preview-section .preview-item {
+    flex: 1;
+  }
+}
+
 .dual-preview-section .preview-item {
   width: 100%;
   border: 2px solid #e0e0e0;
@@ -649,6 +661,8 @@ input:disabled + .slider {
   overflow: hidden;
   background: #f8f9ff;
   padding: 15px;
+  display: flex;
+  flex-direction: column;
 }
 
 .dual-preview-section .preview-label {
