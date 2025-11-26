@@ -33,23 +33,47 @@
 
     <!-- File Info & Preview -->
     <div v-if="selectedFiles.length > 0 && !processedImages.length" class="file-info">
-      <div class="file-header">
-        <div>
-          <h3>Selected File{{ selectedFiles.length > 1 ? 's' : '' }}:</h3>
-          <div v-if="selectedFiles.length === 1" class="file-name">{{ selectedFiles[0].name }}</div>
+      <div class="file-cards-row">
+        <!-- Selected Files Card -->
+        <div class="info-card files-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-emoji">📁</span>
+              <h3>Selected File{{ selectedFiles.length > 1 ? 's' : '' }}</h3>
+            </div>
+            <button
+              class="btn btn-secondary btn-small"
+              @click="reset"
+              :disabled="processing"
+            >
+              Choose Different File{{ selectedFiles.length > 1 ? 's' : '' }}
+            </button>
+          </div>
+          <div v-if="selectedFiles.length === 1" class="file-name">📄 {{ selectedFiles[0].name }}</div>
           <div v-else class="file-list">
             <div v-for="(file, idx) in selectedFiles" :key="idx" class="file-item">
-              {{ idx + 1 }}. {{ file.name }}
+              📄 {{ idx + 1 }}. {{ file.name }}
             </div>
           </div>
         </div>
-        <button
-          class="btn btn-secondary btn-small"
-          @click="reset"
-          :disabled="processing"
-        >
-          Choose Different File{{ selectedFiles.length > 1 ? 's' : '' }}
-        </button>
+
+        <!-- Output Name Card -->
+        <div class="info-card output-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-emoji">✏️</span>
+              <h3>Output Name</h3>
+            </div>
+          </div>
+          <input
+            type="text"
+            v-model="outputBaseName"
+            :disabled="processing"
+            placeholder="Enter base name for output files"
+            class="file-name-input-card"
+          >
+          <div class="card-hint">💡 Files will be named: [name]_1.jpg, [name]_2.jpg, etc.</div>
+        </div>
       </div>
 
       <!-- Dual File Preview (Two Files Mode) -->
@@ -186,25 +210,6 @@
             </div>
           </div>
 
-          <!-- Output File Name Controls -->
-          <div class="setting-card">
-            <div class="setting-header">
-              <span class="setting-icon">📝</span>
-              <span class="setting-title">Output File Name</span>
-            </div>
-            <div class="file-name-input-container">
-              <input
-                type="text"
-                v-model="outputBaseName"
-                :disabled="processing"
-                placeholder="Enter base name for output files"
-                class="file-name-input"
-              >
-            </div>
-            <div class="setting-description">
-              Output files will be named: [base name]_1.jpg, [base name]_2.jpg, etc.
-            </div>
-          </div>
         </div>
       </div>
 
@@ -333,25 +338,6 @@
             </div>
           </div>
 
-          <!-- Output File Name Controls -->
-          <div class="setting-card">
-            <div class="setting-header">
-              <span class="setting-icon">📝</span>
-              <span class="setting-title">Output File Name</span>
-            </div>
-            <div class="file-name-input-container">
-              <input
-                type="text"
-                v-model="outputBaseName"
-                :disabled="processing"
-                placeholder="Enter base name for output files"
-                class="file-name-input"
-              >
-            </div>
-            <div class="setting-description">
-              Output files will be named: [base name]_1.jpg, [base name]_2.jpg, etc.
-            </div>
-          </div>
         </div>
       </div>
 
